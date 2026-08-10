@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SchoolOS Africa</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56;
+    --amber: #BA7517; --amber-light: #FAEEDA;
+    --red: #E24B4A;   --red-light: #FCEBEB;
+    --blue: #378ADD;  --blue-light: #E6F1FB;
+    --purple: #7F77DD;--purple-light:#EEEDFE;
+    --bg: #F8F9FA; --surface: #FFFFFF; --border: rgba(0,0,0,0.08);
+    --text: #1A1A1A; --muted: #6B7280; --hint: #9CA3AF;
+    --radius: 10px; --radius-sm: 7px;
+    --sidebar: 220px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#111827;--surface:#1F2937;--border:rgba(255,255,255,0.08);
+      --text:#F9FAFB;--muted:#9CA3AF;--hint:#6B7280;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; font-size: 13px; }
+
+  /* ── Layout ── */
+  #app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: var(--sidebar); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .topbar { height: 54px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; gap: 12px; }
+  .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* ── Sidebar ── */
+  .logo-wrap { padding: 16px 16px 10px; display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 32px; height: 32px; background: var(--green); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .logo-text strong { display: block; font-size: 14px; font-weight: 700; color: var(--text); }
+  .logo-text span { font-size: 11px; color: var(--muted); }
+  .school-pill { margin: 6px 12px 10px; background: var(--green-light); border-radius: var(--radius-sm); padding: 8px 10px; }
+  .school-pill p { font-size: 12px; font-weight: 600; color: var(--green-dark); }
+  .school-pill span { font-size: 10px; color: var(--green); }
+  .nav-section { padding: 4px 0; flex: 1; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--hint); text-transform: uppercase; letter-spacing: .06em; padding: 8px 16px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 16px; cursor: pointer; font-size: 13px; color: var(--muted); border-left: 2.5px solid transparent; transition: all .12s; user-select: none; }
+  .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
+  .nav-item.active { background: var(--green-light); color: var(--green-dark); border-left-color: var(--green); font-weight: 600; }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; background: var(--red-light); color: var(--red); font-size: 10px; padding: 1px 7px; border-radius: 10px; font-weight: 700; }
+  .sidebar-footer { padding: 12px 14px; border-top: 1px solid var(--border); }
+  .user-row { display: flex; align-items: center; gap: 9px; }
+
+  /* ── Topbar ── */
+  .topbar-title { font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; background: var(--surface); color: var(--text); transition: all .12s; white-space: nowrap; }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+  .btn-danger { background: var(--red-light); border-color: var(--red); color: var(--red); }
+  .icon-btn { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--surface); color: var(--muted); transition: background .12s; }
+  .icon-btn:hover { background: var(--bg); }
+  .icon-btn svg { width: 17px; height: 17px; }
+
+  /* ── Sections ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Page header ── */
+  .ph { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
+  .ph-title { font-size: 20px; font-weight: 700; color: var(--text); }
+  .ph-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ph-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* ── Stat cards ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin-bottom: 18px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .stat-lbl { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .stat-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .stat-icon svg { width: 15px; height: 15px; }
+  .stat-val { font-size: 22px; font-weight: 700; color: var(--text); }
+  .stat-change { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .card-body { padding: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+
+  /* ── Grid layouts ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .three-col { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .four-col { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 18px; }
+
+  /* ── Table ── */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  /* ── Badges ── */
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+  .bg-green { background: var(--green-light); color: var(--green-dark); }
+  .bg-amber { background: var(--amber-light); color: var(--amber); }
+  .bg-red   { background: var(--red-light);   color: var(--red); }
+  .bg-blue  { background: var(--blue-light);  color: var(--blue); }
+  .bg-purple{ background: var(--purple-light);color: var(--purple); }
+  .bg-gray  { background: var(--bg);          color: var(--muted); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 3px; background: var(--bg); padding: 3px; border-radius: var(--radius-sm); margin-bottom: 14px; border: 1px solid var(--border); width: fit-content; }
+  .tab { padding: 5px 14px; font-size: 12px; font-weight: 500; border-radius: 5px; cursor: pointer; color: var(--muted); transition: all .12s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+  /* ── Avatar ── */
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; background: var(--green-light); color: var(--green-dark); }
+  .avatar-lg { width: 48px; height: 48px; font-size: 16px; }
+
+  /* ── Search ── */
+  .search-wrap { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 12px; margin-bottom: 12px; }
+  .search-wrap svg { width: 14px; height: 14px; color: var(--muted); flex-shrink: 0; }
+  .search-wrap input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); width: 100%; }
+
+  /* ── Form fields ── */
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 4px; display: block; }
+  .form-input { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; color: var(--text); background: var(--bg); outline: none; transition: border-color .12s; }
+  .form-input:focus { border-color: var(--green); }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── Attendance buttons ── */
+  .att-grp { display: flex; gap: 4px; }
+  .att-btn { padding: 4px 9px; font-size: 10px; font-weight: 600; border-radius: 5px; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--muted); transition: all .12s; }
+  .att-btn:hover { background: var(--surface); }
+  .att-btn.sel-present { background: var(--green-light); color: var(--green-dark); border-color: var(--green); }
+  .att-btn.sel-absent  { background: var(--red-light);   color: var(--red);        border-color: var(--red); }
+  .att-btn.sel-late    { background: var(--amber-light); color: var(--amber);      border-color: var(--amber); }
+
+  /* ── Kanban ── */
+  .kanban { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .k-col { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+  .k-col-head { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .k-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 7px; cursor: pointer; transition: border-color .12s; }
+  .k-card:hover { border-color: var(--green); }
+  .k-card-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .k-card-meta { font-size: 11px; color: var(--muted); margin-top: 5px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  /* ── Messaging ── */
+  .msg-layout { display: grid; grid-template-columns: 230px 1fr; gap: 10px; height: 480px; }
+  .msg-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-y: auto; }
+  .msg-item { padding: 10px 13px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+  .msg-item:hover, .msg-item.active { background: var(--green-light); }
+  .msg-item-top { display: flex; justify-content: space-between; }
+  .msg-item-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .msg-item-time { font-size: 10px; color: var(--hint); }
+  .msg-item-preview { font-size: 11px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg-thread { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; }
+  .msg-th-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .msg-th-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble { max-width: 75%; padding: 9px 13px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+  .bubble.sent { background: var(--green); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .bubble.recv { background: var(--bg); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+  .msg-input { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  .msg-input input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; background: var(--bg); color: var(--text); outline: none; }
+  .msg-input input:focus { border-color: var(--green); }
+
+  /* ── Announcements ── */
+  .ann-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .ann-title { font-size: 14px; font-weight: 600; color: var(--text); margin: 6px 0 4px; }
+  .ann-body { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .ann-meta { font-size: 10px; color: var(--hint); margin-top: 8px; display: flex; gap: 12px; }
+
+  /* ── Charts ── */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ── Loading state ── */
+  .loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: 20px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1A1A1A; color: #fff; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9999; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+
+  /* ── Progress ── */
+  .prog-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .prog-fill { height: 100%; border-radius: 3px; }
+
+  /* ── Info rows ── */
+  .info-row { display: grid; grid-template-columns: 130px 1fr; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: var(--muted); }
+  .info-val { font-weight: 600; color: var(--text); }
+
+  /* ── Notification items ── */
+  .notif-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .notif-icon svg { width: 16px; height: 16px; }
+  .notif-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .notif-time { font-size: 10px; color: var(--hint); margin-top: 2px; }
+
+  /* ── Activity feed ── */
+  .act-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .act-item:last-child { border-bottom: none; }
+  .act-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .act-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .act-text strong { color: var(--text); }
+  .act-time { font-size: 10px; color: var(--hint); margin-top: 2px; }
+
+  /* ── Fee bars ── */
+  .fee-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .fee-stat-lbl { font-size: 11px; color: var(--muted); }
+  .fee-stat-val { font-size: 22px; font-weight: 700; margin-top: 3px; }
+
+  /* ── Student card grid ── */
+  .student-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; cursor: pointer; transition: border-color .15s; }
+  .student-card:hover { border-color: var(--green); }
+
+  /* ── Modal overlay ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius); padding: 24px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Connection status ── */
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty svg { width: 40px; height: 40px; margin: 0 auto 10px; display: block; color: var(--hint); }
+  .empty p { font-size: 13px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .two-col, .four-col, .three-col, .kanban { grid-template-columns: 1fr; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+    .msg-layout { grid-template-columns: 1fr; height: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══════════════ SIDEBAR ═══════════════ -->
+  <nav class="sidebar">
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
+      </div>
+      <div class="logo-text"><strong>SchoolOS</strong><span>Africa</span></div>
+    </div>
+    <div class="school-pill">
+      <p id="school-name">Loading…</p>
+      <span id="school-plan">–</span>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" data-sec="dashboard" onclick="goTo('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-label">Modules</div>
+      <div class="nav-item" data-sec="admissions" onclick="goTo('admissions',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Admissions
+      </div>
+      <div class="nav-item" data-sec="fees" onclick="goTo('fees',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        Fee Management
+      </div>
+      <div class="nav-item" data-sec="attendance" onclick="goTo('attendance',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Attendance
+      </div>
+      <div class="nav-item" data-sec="comms" onclick="goTo('comms',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Communication
+        <span class="nav-badge" id="unread-badge" style="display:none">3</span>
+      </div>
+      <div class="nav-label">People</div>
+      <div class="nav-item" data-sec="students" onclick="goTo('students',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Students
+      </div>
+      <div class="nav-item" data-sec="parents" onclick="goTo('parents',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        Parent Portal
+      </div>
+      <div class="nav-label">System</div>
+      <div class="nav-item" data-sec="reports" onclick="goTo('reports',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reports
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="user-av">–</div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)" id="user-name">Loading…</div>
+          <div style="font-size:10px;color:var(--muted)" id="user-role">–</div>
+        </div>
+        <div class="conn-dot" id="conn-dot" style="margin-left:auto;background:var(--amber)" title="Connecting…"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════ MAIN ═══════════════ -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-right">
+        <div class="icon-btn" title="Refresh data" onclick="loadAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </div>
+        <button class="btn btn-primary" onclick="openAdmForm()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Student
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="section active" id="sec-dashboard">
+        <div class="stat-grid" id="dash-stats">
+          <div class="loading"><div class="spinner"></div> Loading dashboard…</div>
+        </div>
+        <div class="two-col">
+          <div class="card"><div class="card-body">
+            <div class="card-title">Monthly Fee Collection (KES)</div>
+            <div style="display:flex;gap:14px;margin-bottom:10px;font-size:11px;color:var(--muted)">
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--green);margin-right:5px"></span>Collected</span>
+            </div>
+            <div class="chart-wrap" style="height:180px"><canvas id="feeChart" role="img" aria-label="Monthly fee collection chart">Monthly fee data</canvas></div>
+          </div></div>
+          <div class="card"><div class="card-body">
+            <div class="card-title">Recent Activity</div>
+            <div id="activity-feed"><div class="loading"><div class="spinner"></div></div></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- ── ADMISSIONS ── -->
+      <div class="section" id="sec-admissions">
+        <div class="ph">
+          <div><div class="ph-title">Admissions</div><div class="ph-sub">Manage applications and enrollment pipeline</div></div>
+          <div class="ph-actions">
+            <button class="btn" onclick="loadAdmissions()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
+            <button class="btn btn-primary" onclick="openAdmForm()">+ New Application</button>
+          </div>
+        </div>
+        <div class="four-col" id="adm-stats"></div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'adm-kanban-view','adm-table-view')">Kanban</div>
+          <div class="tab" onclick="switchTab(this,'adm-table-view','adm-kanban-view')">Table</div>
+        </div>
+        <div id="adm-kanban-view">
+          <div class="kanban" id="kanban-board"><div class="loading"><div class="spinner"></div> Loading…</div></div>
+        </div>
+        <div id="adm-table-view" style="display:none">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search applications…" oninput="filterAdmTable(this.value)">
+          </div>
+          <div class="table-wrap"><table id="adm-table"><thead><tr><th>Name</th><th>Class</th><th>Parent</th><th>Phone</th><th>Stage</th><th>Date</th><th></th></tr></thead><tbody id="adm-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ── FEES ── -->
+      <div class="section" id="sec-fees">
+        <div class="ph">
+          <div><div class="ph-title">Fee Management</div><div class="ph-sub" id="fee-term-label">Term 2 · 2025</div></div>
+          <div class="ph-actions">
+            <button class="btn" onclick="loadFees()">Refresh</button>
+            <button class="btn btn-primary" onclick="openPaymentModal()">+ Record Payment</button>
+          </div>
+        </div>
+        <div class="four-col" id="fee-stats"></div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search student or parent…" oninput="filterFeeTable(this.value)">
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Student</th><th>Class</th><th>Total Fees</th><th>Paid</th><th>Balance</th><th>Status</th><th>Due</th><th></th></tr></thead>
+          <tbody id="fee-tbody"></tbody></table>
+        </div>
+        <div style="margin-top:10px;padding:10px 14px;background:var(--amber-light);border-radius:var(--radius-sm);font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Automated reminders send 7 days before due date, on due date, and 7 days after.
+        </div>
+      </div>
+
+      <!-- ── ATTENDANCE ── -->
+      <div class="section" id="sec-attendance">
+        <div class="ph">
+          <div><div class="ph-title">Attendance</div><div class="ph-sub" id="att-date-label">Today</div></div>
+          <div class="ph-actions">
+            <select class="form-input" style="width:auto" id="class-select" onchange="loadAttendance()"><option value="">All Classes</option></select>
+            <button class="btn btn-primary" onclick="saveAttendance()">Save Register</button>
+          </div>
+        </div>
+        <div class="stat-grid" id="att-stats"></div>
+        <div class="card" style="margin-bottom:12px"><div class="card-body">
+          <div class="card-title">Class Register — <span id="class-label">Select a class</span></div>
+          <div class="table-wrap" style="margin:0"><table><thead><tr><th>#</th><th>Student</th><th>Mark Attendance</th><th>Status</th></tr></thead><tbody id="att-tbody"></tbody></table></div>
+        </div></div>
+        <div style="padding:10px 14px;background:var(--amber-light);border-radius:var(--radius-sm);font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Absent students automatically notify parents via SMS and in-app notification.
+        </div>
+      </div>
+
+      <!-- ── COMMUNICATION ── -->
+      <div class="section" id="sec-comms">
+        <div class="ph">
+          <div><div class="ph-title">Communication</div><div class="ph-sub">Messages, announcements and notifications</div></div>
+          <button class="btn btn-primary" onclick="openAnnModal()">+ Announcement</button>
+        </div>
+        <div class="tabs">
+          <div class="tab active" id="comm-tab-msg" onclick="showCommTab('messages',this)">Messages</div>
+          <div class="tab" id="comm-tab-ann" onclick="showCommTab('announcements',this)">Announcements</div>
+        </div>
+        <div id="comm-messages">
+          <div class="msg-layout">
+            <div class="msg-list" id="msg-list-panel"><div class="loading"><div class="spinner"></div></div></div>
+            <div class="msg-thread">
+              <div class="msg-th-head" id="msg-head">
+                <div class="avatar" id="th-av">?</div>
+                <div><div style="font-size:13px;font-weight:600" id="th-name">Select a conversation</div><div style="font-size:11px;color:var(--muted)" id="th-sub">–</div></div>
+              </div>
+              <div class="msg-th-body" id="msg-body"></div>
+              <div class="msg-input">
+                <input type="text" placeholder="Type a message…" id="msg-in" onkeydown="if(event.key==='Enter')sendMsg()">
+                <button class="btn btn-primary" onclick="sendMsg()">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="comm-announcements" style="display:none">
+          <div id="ann-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+      <!-- ── STUDENTS ── -->
+      <div class="section" id="sec-students">
+        <div class="ph">
+          <div><div class="ph-title">Student Profiles</div><div class="ph-sub" id="student-count-label">Loading…</div></div>
+          <div class="ph-actions">
+            <select class="form-input" style="width:auto" id="class-filter-students" onchange="filterStudents()"><option value="">All Classes</option></select>
+          </div>
+        </div>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search by name or admission number…" id="student-search" oninput="filterStudents()">
+        </div>
+        <div class="three-col" id="student-grid"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- ── PARENTS ── -->
+      <div class="section" id="sec-parents">
+        <div class="ph">
+          <div><div class="ph-title">Parent Portal</div><div class="ph-sub">Overview from a parent's perspective</div></div>
+        </div>
+        <div id="parent-view"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- ── REPORTS ── -->
+      <div class="section" id="sec-reports">
+        <div class="ph">
+          <div><div class="ph-title">Reports</div><div class="ph-sub">Export and download school data</div></div>
+        </div>
+        <div class="three-col">
+          <div class="ann-card">
+            <div class="badge bg-blue">Admissions</div>
+            <div class="ann-title">New Admissions Report</div>
+            <div class="ann-body">All students enrolled this term with parent details and class assignments.</div>
+            <button class="btn" style="margin-top:12px" onclick="exportStudents()">Download CSV</button>
+          </div>
+          <div class="ann-card">
+            <div class="badge bg-purple">Fees</div>
+            <div class="ann-title">Fee Collection Summary</div>
+            <div class="ann-body">Complete overview of fees collected, outstanding balances, and overdue accounts.</div>
+            <button class="btn" style="margin-top:12px" onclick="exportFees()">Download CSV</button>
+          </div>
+          <div class="ann-card">
+            <div class="badge bg-green">Attendance</div>
+            <div class="ann-title">Attendance Report</div>
+            <div class="ann-body">Daily attendance by class and student for the current term.</div>
+            <button class="btn" style="margin-top:12px" onclick="exportAttendance()">Download CSV</button>
+          </div>
+          <div class="ann-card">
+            <div class="badge bg-amber">Fees</div>
+            <div class="ann-title">Outstanding Balances</div>
+            <div class="ann-body">Students with unpaid or partial fees sorted by amount owed and due date.</div>
+            <button class="btn" style="margin-top:12px">Download CSV</button>
+          </div>
+          <div class="ann-card">
+            <div class="badge bg-blue">Students</div>
+            <div class="ann-title">Student Directory</div>
+            <div class="ann-body">Full student list with parent contacts, classes, and admission dates.</div>
+            <button class="btn" style="margin-top:12px" onclick="exportStudents()">Download CSV</button>
+          </div>
+          <div class="ann-card">
+            <div class="badge bg-green">Admissions</div>
+            <div class="ann-title">Admissions Pipeline</div>
+            <div class="ann-body">All admission applications with stage, parent info, and outcome.</div>
+            <button class="btn" style="margin-top:12px" onclick="exportAdmissions()">Download CSV</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+
+<!-- New Admission Modal -->
+<div class="modal-overlay" id="adm-modal">
+  <div class="modal">
+    <div class="modal-title">New Admission Application <button class="icon-btn" onclick="closeModal('adm-modal')" style="border:none">✕</button></div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="af-fname" placeholder="Grace"></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="af-lname" placeholder="Otieno"></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-input" type="date" id="af-dob"></div>
+      <div class="form-group"><label class="form-label">Gender</label><select class="form-input" id="af-gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Class Applying For</label><select class="form-input" id="af-grade"><option>Baby Class</option><option>PP1</option><option>PP2</option><option>Grade 1</option><option>Grade 2</option></select></div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 6px">Parent / Guardian</div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Parent Full Name</label><input class="form-input" id="af-pname" placeholder="Mary Otieno"></div>
+      <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" id="af-phone" placeholder="+254 7XX XXX XXX"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" id="af-email" type="email" placeholder="parent@email.com"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('adm-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAdmission()">Submit Application</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal-overlay" id="pay-modal">
+  <div class="modal">
+    <div class="modal-title">Record Payment <button class="icon-btn" onclick="closeModal('pay-modal')" style="border:none">✕</button></div>
+    <div class="form-group"><label class="form-label">Student</label><select class="form-input" id="pay-student"></select></div>
+    <div class="form-group"><label class="form-label">Amount (KES)</label><input class="form-input" type="number" id="pay-amount" placeholder="25000"></div>
+    <div class="form-group"><label class="form-label">Payment Method</label><select class="form-input" id="pay-method"><option value="mpesa">M-Pesa</option><option value="bank">Bank Transfer</option><option value="cash">Cash</option></select></div>
+    <div class="form-group"><label class="form-label">Reference / M-Pesa Code</label><input class="form-input" id="pay-ref" placeholder="e.g. QAB12345CD"></div>
+    <div class="form-group"><label class="form-label">Payment Date</label><input class="form-input" type="date" id="pay-date"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('pay-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPayment()">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Announcement Modal -->
+<div class="modal-overlay" id="ann-modal">
+  <div class="modal">
+    <div class="modal-title">New Announcement <button class="icon-btn" onclick="closeModal('ann-modal')" style="border:none">✕</button></div>
+    <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="ann-title-in" placeholder="e.g. Sports Day — Friday June 13"></div>
+    <div class="form-group"><label class="form-label">Message</label><textarea class="form-input" id="ann-body-in" rows="4" placeholder="Type your announcement…" style="resize:vertical"></textarea></div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="ann-type"><option value="general">General</option><option value="event">Event</option><option value="holiday">Holiday</option><option value="emergency">Emergency</option></select></div>
+      <div class="form-group"><label class="form-label">Send To</label><select class="form-input" id="ann-target"><option value="all">Entire School</option><option value="class">Specific Class</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('ann-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAnnouncement()">Send Announcement</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  SUPABASE SETUP
+//  The URL and anon key connect to YOUR project.
+// ══════════════════════════════════════════════
+const SUPABASE_URL  = 'https://celqxkldvjdebfpszbux.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlbHF4a2xkdmpkZWJmcHN6YnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Nzc0NTYsImV4cCI6MjA5NDI1MzQ1Nn0.VIZ3lKSC6DZd2AxhLKFgBXTBAeued3q3NYe5na1JU-U';
+// The school ID from our seed data
+const SCHOOL_ID = 'a1b2c3d4-0000-0000-0000-000000000001';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── App state (data we've loaded)
+let state = {
+  school: null, students: [], classes: [], parents: [],
+  admissions: [], invoices: [], payments: [], attendance: [],
+  announcements: [], currentAttendance: {}
+};
+
+// ── On load
+window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('att-date-label').textContent =
+    'Today · ' + new Date().toLocaleDateString('en-KE', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
+
+  try {
+    await loadAll();
+    document.getElementById('conn-dot').style.background = 'var(--green)';
+    document.getElementById('conn-dot').title = 'Connected to Supabase';
+  } catch(e) {
+    document.getElementById('conn-dot').style.background = 'var(--red)';
+    document.getElementById('conn-dot').title = 'Connection error';
+    showToast('Could not connect to Supabase — check your internet connection');
+    loadDemoMode();
+  }
+});
+
+async function loadAll() {
+  await Promise.all([
+    loadSchool(), loadStudents(), loadClasses(),
+    loadAdmissions(), loadInvoices(), loadAttendance(),
+    loadAnnouncements()
+  ]);
+  renderDashboard();
+  renderAdmissions();
+  renderFees();
+  renderAttendance();
+  renderStudents();
+  renderParents();
+  populateClassSelects();
+  populatePaymentStudents();
+}
+
+// ══════════════════════════════════════════════
+//  DATA LOADERS  — each one fetches from Supabase
+// ══════════════════════════════════════════════
+
+async function loadSchool() {
+  const { data } = await sb.from('schools').select('*').eq('id', SCHOOL_ID).single();
+  if (data) {
+    state.school = data;
+    document.getElementById('school-name').textContent = data.name;
+    document.getElementById('school-plan').textContent = capitalize(data.plan) + ' Plan';
+    document.getElementById('user-name').textContent = 'Jane Mwangi';
+    document.getElementById('user-role').textContent = 'School Admin';
+    document.getElementById('user-av').textContent = 'JM';
+    document.documentElement.style.setProperty('--green', data.primary_color || '#1D9E75');
+  }
+}
+
+async function loadStudents() {
+  const { data } = await sb.from('students')
+    .select('*, classes(name,grade)').eq('school_id', SCHOOL_ID).order('first_name');
+  state.students = data || [];
+}
+
+async function loadClasses() {
+  const { data } = await sb.from('classes').select('*').eq('school_id', SCHOOL_ID).order('name');
+  state.classes = data || [];
+}
+
+async function loadAdmissions() {
+  const { data } = await sb.from('admissions').select('*')
+    .eq('school_id', SCHOOL_ID).order('created_at', { ascending: false });
+  state.admissions = data || [];
+}
+
+async function loadInvoices() {
+  const { data } = await sb.from('invoices')
+    .select('*, students(first_name,last_name,classes(name))')
+    .eq('school_id', SCHOOL_ID).order('due_date');
+  state.invoices = data || [];
+}
+
+async function loadAttendance() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await sb.from('attendance').select('*,students(first_name,last_name)')
+    .eq('school_id', SCHOOL_ID).eq('date', today);
+  state.attendance = data || [];
+  // Build a lookup: student_id -> status
+  state.currentAttendance = {};
+  (data || []).forEach(r => { state.currentAttendance[r.student_id] = r.status; });
+}
+
+async function loadAnnouncements() {
+  const { data } = await sb.from('announcements').select('*')
+    .eq('school_id', SCHOOL_ID).order('created_at', { ascending: false });
+  state.announcements = data || [];
+}
+
+// ══════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ══════════════════════════════════════════════
+
+function renderDashboard() {
+  const totalStudents = state.students.length;
+  const thisMonth = new Date().getMonth();
+  const newAdmThisMonth = state.students.filter(s => {
+    const d = new Date(s.admission_date);
+    return d.getMonth() === thisMonth && d.getFullYear() === new Date().getFullYear();
+  }).length;
+  const totalFees = state.invoices.reduce((a,i) => a + parseFloat(i.total_amount||0), 0);
+  const collected = state.invoices.reduce((a,i) => a + parseFloat(i.amount_paid||0), 0);
+  const outstanding = totalFees - collected;
+  const overdue = state.invoices.filter(i => i.status === 'overdue').length;
+  const present = state.attendance.filter(a => a.status === 'present').length;
+  const attRate = totalStudents ? Math.round(present / totalStudents * 100) : 0;
+
+  document.getElementById('dash-stats').innerHTML = `
+    ${statCard('Total Students', totalStudents, '+' + newAdmThisMonth + ' this month', 'var(--blue-light)', svgUsers(), 'var(--blue)')}
+    ${statCard('New Admissions', state.admissions.filter(a=>a.stage==='submitted').length, 'Applications pending', 'var(--green-light)', svgPlus(), 'var(--green)')}
+    ${statCard('Fees Collected', 'KES ' + fmt(collected), Math.round(collected/Math.max(totalFees,1)*100) + '% of target', 'var(--purple-light)', svgCard(), 'var(--purple)')}
+    ${statCard('Outstanding Fees', 'KES ' + fmt(outstanding), overdue + ' accounts overdue', 'var(--red-light)', svgAlert(), 'var(--red)', 'var(--red)')}
+    ${statCard('Attendance Today', attRate + '%', present + ' / ' + totalStudents + ' present', 'var(--green-light)', svgCheck(), 'var(--green)')}
+    ${statCard('Announcements', state.announcements.length, 'This term', 'var(--amber-light)', svgBell(), 'var(--amber)')}
+  `;
+  renderFeeChart();
+  renderActivityFeed();
+}
+
+function statCard(label, val, change, bg, icon, iconColor, valColor='') {
+  return `<div class="stat-card">
+    <div class="stat-top"><div class="stat-lbl">${label}</div>
+    <div class="stat-icon" style="background:${bg}"><svg viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2">${icon}</svg></div></div>
+    <div class="stat-val" style="${valColor?'color:'+valColor:''}">${val}</div>
+    <div class="stat-change">${change}</div>
+  </div>`;
+}
+
+function renderFeeChart() {
+  const ctx = document.getElementById('feeChart');
+  if (!ctx || !window.Chart) return;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthlyData = Array(12).fill(0);
+  state.invoices.forEach(inv => {
+    if (inv.amount_paid > 0) {
+      const m = new Date(inv.issue_date || new Date()).getMonth();
+      monthlyData[m] += parseFloat(inv.amount_paid);
+    }
+  });
+  const now = new Date().getMonth();
+  const labels = months.slice(0, now + 1);
+  const data = monthlyData.slice(0, now + 1);
+  if (window._feeChart) window._feeChart.destroy();
+  window._feeChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label:'Collected', data, backgroundColor:'#1D9E75', borderRadius:5 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font:{size:11}, color:'#6B7280' }, grid: { display:false } },
+        y: { ticks: { font:{size:11}, color:'#6B7280', callback: v => 'K'+Math.round(v/1000) }, grid:{ color:'rgba(0,0,0,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderActivityFeed() {
+  const items = [
+    ...state.students.slice(-3).map(s => ({
+      color: 'var(--green)', time: relTime(s.created_at),
+      text: `<strong>${s.first_name} ${s.last_name}</strong> enrolled in ${s.classes?.name || 'a class'}`
+    })),
+    ...state.invoices.filter(i=>i.amount_paid>0).slice(-2).map(i => ({
+      color: 'var(--purple)', time: relTime(i.created_at),
+      text: `<strong>KES ${fmt(i.amount_paid)}</strong> payment recorded for ${i.students?.first_name} ${i.students?.last_name}`
+    })),
+    ...state.admissions.slice(0,2).map(a => ({
+      color: 'var(--blue)', time: relTime(a.created_at),
+      text: `<strong>${a.first_name} ${a.last_name}</strong> submitted an admission application`
+    }))
+  ].sort((a,b)=>0).slice(0,6);
+
+  document.getElementById('activity-feed').innerHTML = items.length
+    ? items.map(i => `<div class="act-item">
+        <div class="act-dot" style="background:${i.color}"></div>
+        <div><div class="act-text">${i.text}</div><div class="act-time">${i.time}</div></div>
+      </div>`).join('')
+    : '<div class="empty"><p>No recent activity</p></div>';
+}
+
+function renderAdmissions() {
+  const counts = {submitted:0,under_review:0,interview_scheduled:0,approved:0,rejected:0,enrolled:0};
+  state.admissions.forEach(a => { if(counts[a.stage]!==undefined) counts[a.stage]++; });
+
+  document.getElementById('adm-stats').innerHTML = `
+    ${statCard('Total',state.admissions.length,'All applications','var(--blue-light)',svgUsers(),'var(--blue)')}
+    ${statCard('Submitted',counts.submitted,'Awaiting review','var(--amber-light)',svgAlert(),'var(--amber)')}
+    ${statCard('Approved',counts.approved+counts.enrolled,'Accepted','var(--green-light)',svgCheck(),'var(--green)')}
+    ${statCard('Enrolled',counts.enrolled,'This term','var(--purple-light)',svgPlus(),'var(--purple)')}
+  `;
+
+  const stages = ['submitted','under_review','interview_scheduled','approved'];
+  const labels = {submitted:'Submitted',under_review:'Under Review',interview_scheduled:'Interview Scheduled',approved:'Approved / Enrolled'};
+  document.getElementById('kanban-board').innerHTML = stages.map(s => `
+    <div class="k-col">
+      <div class="k-col-head">${labels[s]} <span class="badge bg-gray">${state.admissions.filter(a=>a.stage===s||(s==='approved'&&(a.stage==='approved'||a.stage==='enrolled'))).length}</span></div>
+      ${state.admissions.filter(a => s==='approved' ? (a.stage==='approved'||a.stage==='enrolled') : a.stage===s).map(a=>`
+        <div class="k-card">
+          <div class="k-card-name">${a.first_name} ${a.last_name}</div>
+          <div class="k-card-meta">
+            <span>${a.grade_applying}</span>
+            <span class="badge ${stageBadge(a.stage)}">${stageLabel(a.stage)}</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--hint)">${relTime(a.created_at)}</span>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+
+  const tbody = document.getElementById('adm-tbody');
+  tbody.innerHTML = state.admissions.map(a => `
+    <tr>
+      <td><strong>${a.first_name} ${a.last_name}</strong></td>
+      <td>${a.grade_applying}</td>
+      <td>${a.parent_name}</td>
+      <td>${a.parent_phone}</td>
+      <td><span class="badge ${stageBadge(a.stage)}">${stageLabel(a.stage)}</span></td>
+      <td>${new Date(a.created_at).toLocaleDateString('en-KE',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td><button class="btn" style="padding:3px 9px;font-size:11px" onclick="advanceStage('${a.id}','${a.stage}')">Advance</button></td>
+    </tr>`).join('');
+}
+
+function renderFees() {
+  const total = state.invoices.reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
+  const paid  = state.invoices.reduce((s,i)=>s+parseFloat(i.amount_paid||0),0);
+  const bal   = total - paid;
+  const over  = state.invoices.filter(i=>i.status==='overdue').length;
+
+  document.getElementById('fee-stats').innerHTML = `
+    <div class="fee-stat"><div class="fee-stat-lbl">Expected</div><div class="fee-stat-val">KES ${fmt(total)}</div></div>
+    <div class="fee-stat" style="border-left:3px solid var(--green)"><div class="fee-stat-lbl">Collected</div><div class="fee-stat-val" style="color:var(--green)">KES ${fmt(paid)}</div></div>
+    <div class="fee-stat" style="border-left:3px solid var(--amber)"><div class="fee-stat-lbl">Outstanding</div><div class="fee-stat-val" style="color:var(--amber)">KES ${fmt(bal)}</div></div>
+    <div class="fee-stat" style="border-left:3px solid var(--red)"><div class="fee-stat-lbl">Overdue Accounts</div><div class="fee-stat-val" style="color:var(--red)">${over}</div></div>
+  `;
+
+  document.getElementById('fee-tbody').innerHTML = state.invoices.map(inv => {
+    const s = inv.students;
+    const name = s ? `${s.first_name} ${s.last_name}` : '–';
+    const cls  = s?.classes?.name || '–';
+    const bal  = parseFloat(inv.total_amount||0) - parseFloat(inv.amount_paid||0);
+    return `<tr>
+      <td><strong>${name}</strong></td>
+      <td>${cls}</td>
+      <td>KES ${fmt(inv.total_amount)}</td>
+      <td>KES ${fmt(inv.amount_paid)}</td>
+      <td style="${bal>0?'color:var(--amber)':''}">${bal > 0 ? 'KES '+fmt(bal) : '–'}</td>
+      <td><span class="badge ${feeBadge(inv.status)}">${capitalize(inv.status)}</span></td>
+      <td>${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-KE',{day:'numeric',month:'short'}) : '–'}</td>
+      <td><button class="btn" style="padding:3px 9px;font-size:11px">${inv.status==='paid'?'Receipt':'Remind'}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAttendance() {
+  const today = new Date().toISOString().split('T')[0];
+  const present = state.attendance.filter(a=>a.status==='present').length;
+  const absent  = state.attendance.filter(a=>a.status==='absent').length;
+  const late    = state.attendance.filter(a=>a.status==='late').length;
+  const total   = state.students.length;
+  const rate    = total ? Math.round(present/total*100) : 0;
+
+  document.getElementById('att-stats').innerHTML = `
+    ${statCard('Today\'s Rate', rate+'%', present+' / '+total+' present', 'var(--green-light)', svgCheck(), 'var(--green)')}
+    ${statCard('Present', present, 'Marked present', 'var(--green-light)', svgCheck(), 'var(--green)')}
+    ${statCard('Absent', absent, 'Parents notified', 'var(--red-light)', svgAlert(), 'var(--red)', 'var(--red)')}
+    ${statCard('Late', late, 'Arrived late today', 'var(--amber-light)', svgBell(), 'var(--amber)')}
+  `;
+  renderAttRegister();
+}
+
+function renderAttRegister() {
+  const classId = document.getElementById('class-select').value;
+  const filtered = classId
+    ? state.students.filter(s => s.class_id === classId)
+    : state.students;
+  const cls = state.classes.find(c => c.id === classId);
+  document.getElementById('class-label').textContent = cls ? cls.name : 'All Students';
+
+  document.getElementById('att-tbody').innerHTML = filtered.map((s,i) => {
+    const cur = state.currentAttendance[s.id] || '';
+    return `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><strong>${s.first_name} ${s.last_name}</strong></td>
+      <td><div class="att-grp">
+        <button class="att-btn ${cur==='present'?'sel-present':''}" onclick="markAtt('${s.id}',this,'present')">Present</button>
+        <button class="att-btn ${cur==='absent'?'sel-absent':''}" onclick="markAtt('${s.id}',this,'absent')">Absent</button>
+        <button class="att-btn ${cur==='late'?'sel-late':''}" onclick="markAtt('${s.id}',this,'late')">Late</button>
+      </div></td>
+      <td><span class="badge ${cur==='present'?'bg-green':cur==='absent'?'bg-red':cur==='late'?'bg-amber':'bg-gray'}" id="att-badge-${s.id}">${cur?capitalize(cur):'–'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function markAtt(studentId, btn, status) {
+  state.currentAttendance[studentId] = status;
+  const grp = btn.closest('.att-grp');
+  grp.querySelectorAll('.att-btn').forEach(b => b.className = 'att-btn');
+  btn.classList.add('sel-' + status);
+  const badge = document.getElementById('att-badge-' + studentId);
+  if (badge) {
+    badge.className = 'badge ' + (status==='present'?'bg-green':status==='absent'?'bg-red':'bg-amber');
+    badge.textContent = capitalize(status);
+  }
+}
+
+async function saveAttendance() {
+  const today = new Date().toISOString().split('T')[0];
+  const rows = Object.entries(state.currentAttendance).map(([student_id, status]) => ({
+    school_id: SCHOOL_ID, student_id, status, date: today,
+    class_id: state.students.find(s=>s.id===student_id)?.class_id || null
+  }));
+  if (!rows.length) { showToast('No attendance to save — mark some students first'); return; }
+  const { error } = await sb.from('attendance').upsert(rows, { onConflict: 'student_id,date' });
+  if (error) { showToast('Error saving attendance: ' + error.message); return; }
+  showToast('Attendance saved successfully!');
+  await loadAttendance();
+  renderAttendance();
+}
+
+function renderStudents() {
+  document.getElementById('student-count-label').textContent = state.students.length + ' students enrolled';
+  filterStudents();
+}
+
+function filterStudents() {
+  const q = (document.getElementById('student-search')?.value || '').toLowerCase();
+  const cls = document.getElementById('class-filter-students')?.value || '';
+  const filtered = state.students.filter(s => {
+    const name = `${s.first_name} ${s.last_name} ${s.admission_number}`.toLowerCase();
+    return name.includes(q) && (!cls || s.class_id === cls);
+  });
+  const colors = ['var(--green-light)','var(--blue-light)','var(--purple-light)','var(--amber-light)','var(--red-light)'];
+  const textColors = ['var(--green-dark)','var(--blue)','var(--purple)','var(--amber)','var(--red)'];
+  const inv = {};
+  state.invoices.forEach(i => { inv[i.student_id] = i; });
+  document.getElementById('student-grid').innerHTML = filtered.length
+    ? filtered.map((s,i) => {
+        const col = i % 5;
+        const initials = (s.first_name[0]||'') + (s.last_name[0]||'');
+        const fi = inv[s.id];
+        const feeStatus = fi ? feeBadge(fi.status) : 'bg-gray';
+        const feeLabel = fi ? capitalize(fi.status) : 'No invoice';
+        return `<div class="student-card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div class="avatar avatar-lg" style="background:${colors[col]};color:${textColors[col]}">${initials}</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">${s.first_name} ${s.last_name}</div>
+              <div style="font-size:11px;color:var(--muted)">${s.admission_number||'–'} · ${s.classes?.name||'No class'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span class="badge bg-green">Enrolled</span>
+            <span class="badge ${feeStatus}">${feeLabel} fees</span>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="empty" style="grid-column:1/-1"><p>No students found</p></div>';
+}
+
+function renderParents() {
+  // Show a parent-perspective view using the first student
+  const student = state.students[0];
+  if (!student) { document.getElementById('parent-view').innerHTML = '<div class="empty"><p>No students enrolled yet</p></div>'; return; }
+  const inv = state.invoices.find(i => i.student_id === student.id) || {};
+  const paid = parseFloat(inv.amount_paid||0);
+  const total = parseFloat(inv.total_amount||0);
+  const bal = total - paid;
+  const attToday = state.attendance.find(a => a.student_id === student.id);
+  document.getElementById('parent-view').innerHTML = `
+    <div class="two-col">
+      <div class="card"><div class="card-body">
+        <div class="card-title">My Child</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div class="avatar avatar-lg" style="background:var(--blue-light);color:var(--blue)">${student.first_name[0]}${student.last_name[0]}</div>
+          <div><div style="font-size:15px;font-weight:700">${student.first_name} ${student.last_name}</div><div style="font-size:12px;color:var(--muted)">${student.classes?.name||'–'} · ${student.admission_number||'–'}</div></div>
+        </div>
+        <div class="info-row"><div class="info-label">Admission Date</div><div class="info-val">${student.admission_date ? new Date(student.admission_date).toLocaleDateString('en-KE',{day:'numeric',month:'long',year:'numeric'}) : '–'}</div></div>
+        <div class="info-row"><div class="info-label">Today's Status</div><div class="info-val"><span class="badge ${attToday ? (attToday.status==='present'?'bg-green':attToday.status==='absent'?'bg-red':'bg-amber') : 'bg-gray'}">${attToday ? capitalize(attToday.status) : 'Not marked'}</span></div></div>
+      </div></div>
+      <div class="card"><div class="card-body">
+        <div class="card-title">Fee Balance</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--green-light);border-radius:var(--radius-sm);padding:10px"><div style="font-size:10px;color:var(--green-dark)">Paid</div><div style="font-size:16px;font-weight:700;color:var(--green-dark)">KES ${fmt(paid)}</div></div>
+          <div style="background:${bal>0?'var(--red-light)':'var(--green-light)'};border-radius:var(--radius-sm);padding:10px"><div style="font-size:10px;color:${bal>0?'var(--red)':'var(--green-dark)'}">${bal>0?'Balance':'Fully Paid'}</div><div style="font-size:16px;font-weight:700;color:${bal>0?'var(--red)':'var(--green-dark)'}">${bal>0?'KES '+fmt(bal):'✓'}</div></div>
+        </div>
+        ${total > 0 ? `<div class="prog-bar"><div class="prog-fill" style="width:${Math.round(paid/total*100)}%;background:var(--green)"></div></div><div style="font-size:11px;color:var(--muted);margin-top:4px">${Math.round(paid/total*100)}% paid · Due ${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-KE',{day:'numeric',month:'long'}) : '–'}</div>` : ''}
+        ${bal > 0 ? `<button class="btn btn-primary" style="width:100%;margin-top:12px">Pay via M-Pesa</button>` : ''}
+      </div></div>
+    </div>
+    <div class="card" style="margin-top:12px"><div class="card-body">
+      <div class="card-title">Notifications</div>
+      ${state.announcements.slice(0,3).map(a => `
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--blue-light)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          <div><div class="notif-text"><strong>${a.title}</strong></div><div style="font-size:12px;color:var(--muted)">${a.body?.substring(0,80)}…</div><div class="notif-time">${relTime(a.created_at)}</div></div>
+        </div>`).join('') || '<div class="empty"><p>No notifications</p></div>'}
+    </div></div>
+  `;
+}
+
+// ══════════════════════════════════════════════
+//  COMMUNICATION
+// ══════════════════════════════════════════════
+
+let msgHistory = [
+  {from:'recv',text:'Good morning. I wanted to ask about the next fee payment deadline.'},
+  {from:'sent',text:'Good morning! The deadline for Term 2 is June 30, 2025.'},
+  {from:'recv',text:'Thank you. Can I pay via M-Pesa?'},
+  {from:'sent',text:'Yes! Our M-Pesa Paybill is 123456. You\'ll receive a receipt via SMS.'},
+];
+let currentContact = {name:'Mary Otieno',av:'MO',sub:'Parent · Grace Otieno'};
+
+function renderComms() {
+  const contacts = state.students.slice(0,6).map((s,i)=>({
+    name: 'Parent of ' + s.first_name,
+    av: s.first_name[0] + s.last_name[0],
+    sub: 'Parent · ' + s.first_name + ' ' + s.last_name,
+    preview: i===0 ? 'When is the next fee deadline?' : 'Thank you for the update.',
+    time: i===0 ? 'Now' : relTime(new Date(Date.now()-i*3600000))
+  }));
+  document.getElementById('msg-list-panel').innerHTML = contacts.map((c,i)=>`
+    <div class="msg-item ${i===0?'active':''}" onclick="selectContact(this,'${c.name}','${c.av}','${c.sub}')">
+      <div class="msg-item-top"><span class="msg-item-name">${c.name}</span><span class="msg-item-time">${c.time}</span></div>
+      <div class="msg-item-preview">${c.preview}</div>
+    </div>`).join('');
+  renderThread();
+  renderAnnouncements();
+}
+
+function selectContact(el, name, av, sub) {
+  document.querySelectorAll('.msg-item').forEach(m=>m.classList.remove('active'));
+  el.classList.add('active');
+  currentContact = {name, av, sub};
+  msgHistory = [{from:'recv',text:'Hi, I had a question about my child.'},{from:'sent',text:'Hello! Of course, how can I help?'}];
+  document.getElementById('th-name').textContent = name;
+  document.getElementById('th-av').textContent = av;
+  document.getElementById('th-sub').textContent = sub;
+  renderThread();
+}
+
+function renderThread() {
+  document.getElementById('msg-body').innerHTML = msgHistory.map(m=>
+    `<div class="bubble ${m.from}">${m.text}</div>`
+  ).join('');
+  document.getElementById('msg-body').scrollTop = 9999;
+}
+
+function sendMsg() {
+  const v = document.getElementById('msg-in').value.trim();
+  if (!v) return;
+  msgHistory.push({from:'sent',text:v});
+  document.getElementById('msg-in').value = '';
+  renderThread();
+}
+
+function renderAnnouncements() {
+  const typeColor = {general:'bg-blue',event:'bg-green',holiday:'bg-amber',emergency:'bg-red'};
+  document.getElementById('ann-list').innerHTML = state.announcements.length
+    ? state.announcements.map(a => `
+        <div class="ann-card">
+          <span class="badge ${typeColor[a.type]||'bg-gray'}">${capitalize(a.type||'general')}</span>
+          <div class="ann-title">${a.title}</div>
+          <div class="ann-body">${a.body}</div>
+          <div class="ann-meta"><span>${relTime(a.created_at)}</span><span>To: ${capitalize(a.target||'all')}</span></div>
+        </div>`)
+        .join('')
+    : '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><p>No announcements yet. Send your first one!</p></div>';
+}
+
+// ══════════════════════════════════════════════
+//  WRITE OPERATIONS
+// ══════════════════════════════════════════════
+
+async function submitAdmission() {
+  const fname = document.getElementById('af-fname').value.trim();
+  const lname = document.getElementById('af-lname').value.trim();
+  const pname = document.getElementById('af-pname').value.trim();
+  const phone = document.getElementById('af-phone').value.trim();
+  if (!fname || !lname || !pname || !phone) { showToast('Please fill in all required fields'); return; }
+  const { error } = await sb.from('admissions').insert({
+    school_id: SCHOOL_ID,
+    first_name: fname, last_name: lname,
+    date_of_birth: document.getElementById('af-dob').value || null,
+    gender: document.getElementById('af-gender').value,
+    grade_applying: document.getElementById('af-grade').value,
+    parent_name: pname, parent_phone: phone,
+    parent_email: document.getElementById('af-email').value || null,
+    stage: 'submitted'
+  });
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('Application submitted successfully!');
+  closeModal('adm-modal');
+  clearAdmForm();
+  await loadAdmissions();
+  renderAdmissions();
+}
+
+function clearAdmForm() {
+  ['af-fname','af-lname','af-dob','af-pname','af-phone','af-email'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+}
+
+async function advanceStage(id, current) {
+  const order = ['submitted','under_review','interview_scheduled','approved','enrolled'];
+  const idx = order.indexOf(current);
+  if (idx === -1 || idx === order.length - 1) { showToast('Already at final stage'); return; }
+  const next = order[idx + 1];
+  const { error } = await sb.from('admissions').update({ stage: next, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('Moved to ' + stageLabel(next));
+  await loadAdmissions();
+  renderAdmissions();
+}
+
+async function submitPayment() {
+  const studentId = document.getElementById('pay-student').value;
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  const ref = document.getElementById('pay-ref').value.trim();
+  const method = document.getElementById('pay-method').value;
+  const date = document.getElementById('pay-date').value;
+  if (!studentId || !amount || amount <= 0) { showToast('Please fill in student and amount'); return; }
+  const inv = state.invoices.find(i => i.student_id === studentId);
+  if (!inv) { showToast('No invoice found for this student'); return; }
+  const newPaid = parseFloat(inv.amount_paid||0) + amount;
+  const newStatus = newPaid >= parseFloat(inv.total_amount||0) ? 'paid' : 'partial';
+  const { error } = await sb.from('payments').insert({
+    school_id: SCHOOL_ID, invoice_id: inv.id, student_id: studentId,
+    amount, method, reference: ref || null, payment_date: date,
+    receipt_number: 'RCP-' + Date.now()
+  });
+  if (error) { showToast('Error recording payment: ' + error.message); return; }
+  await sb.from('invoices').update({ amount_paid: newPaid, status: newStatus }).eq('id', inv.id);
+  showToast('Payment of KES ' + fmt(amount) + ' recorded!');
+  closeModal('pay-modal');
+  await loadInvoices();
+  renderFees();
+  renderDashboard();
+}
+
+async function submitAnnouncement() {
+  const title = document.getElementById('ann-title-in').value.trim();
+  const body = document.getElementById('ann-body-in').value.trim();
+  if (!title || !body) { showToast('Please enter a title and message'); return; }
+  const { error } = await sb.from('announcements').insert({
+    school_id: SCHOOL_ID, title, body,
+    type: document.getElementById('ann-type').value,
+    target: document.getElementById('ann-target').value
+  });
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('Announcement sent to all parents!');
+  closeModal('ann-modal');
+  document.getElementById('ann-title-in').value = '';
+  document.getElementById('ann-body-in').value = '';
+  await loadAnnouncements();
+  renderAnnouncements();
+}
+
+// ══════════════════════════════════════════════
+//  EXPORTS (CSV download)
+// ══════════════════════════════════════════════
+
+function downloadCSV(data, name) {
+  if (!data.length) { showToast('No data to export'); return; }
+  const keys = Object.keys(data[0]);
+  const csv = [keys.join(','), ...data.map(r => keys.map(k => JSON.stringify(r[k]||'')).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = name + '_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  showToast('Downloaded ' + name + '.csv');
+}
+
+function exportStudents() {
+  downloadCSV(state.students.map(s => ({
+    admission_number: s.admission_number, first_name: s.first_name, last_name: s.last_name,
+    gender: s.gender, class: s.classes?.name, admission_date: s.admission_date, status: s.status
+  })), 'students');
+}
+
+function exportFees() {
+  downloadCSV(state.invoices.map(i => ({
+    student: i.students ? `${i.students.first_name} ${i.students.last_name}` : '',
+    term: i.term, total: i.total_amount, paid: i.amount_paid,
+    balance: parseFloat(i.total_amount||0)-parseFloat(i.amount_paid||0),
+    status: i.status, due_date: i.due_date
+  })), 'fee_report');
+}
+
+function exportAttendance() {
+  downloadCSV(state.attendance.map(a => ({
+    student: a.students ? `${a.students.first_name} ${a.students.last_name}` : '',
+    date: a.date, status: a.status
+  })), 'attendance');
+}
+
+function exportAdmissions() {
+  downloadCSV(state.admissions.map(a => ({
+    name: `${a.first_name} ${a.last_name}`, grade: a.grade_applying,
+    parent: a.parent_name, phone: a.parent_phone, email: a.parent_email,
+    stage: a.stage, applied: a.created_at?.split('T')[0]
+  })), 'admissions');
+}
+
+// ══════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════
+
+function goTo(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const titles = {dashboard:'Dashboard',admissions:'Admissions',fees:'Fee Management',attendance:'Attendance',comms:'Communication',students:'Students',parents:'Parent Portal',reports:'Reports'};
+  document.getElementById('topbar-title').textContent = titles[id] || id;
+  if (id === 'comms') renderComms();
+  if (id === 'attendance') renderAttRegister();
+}
+
+function switchTab(el, show, hide) {
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(show).style.display = 'block';
+  document.getElementById(hide).style.display = 'none';
+}
+
+function showCommTab(tab, el) {
+  ['messages','announcements'].forEach(t => {
+    document.getElementById('comm-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#comm-tab-msg,#comm-tab-ann').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if (tab === 'announcements') renderAnnouncements();
+}
+
+function openAdmForm()       { document.getElementById('adm-modal').classList.add('open'); }
+function openPaymentModal()  { document.getElementById('pay-modal').classList.add('open'); }
+function openAnnModal()      { document.getElementById('ann-modal').classList.add('open'); }
+function closeModal(id)      { document.getElementById(id).classList.remove('open'); }
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); });
+});
+
+function populateClassSelects() {
+  const opts = '<option value="">All Classes</option>' + state.classes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  ['class-select','class-filter-students'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.innerHTML = opts;
+  });
+}
+
+function populatePaymentStudents() {
+  const el = document.getElementById('pay-student');
+  if (!el) return;
+  el.innerHTML = '<option value="">Select student…</option>' + state.students.map(s=>
+    `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+}
+
+function filterAdmTable(q) {
+  const rows = document.getElementById('adm-tbody').querySelectorAll('tr');
+  rows.forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none'; });
+}
+
+function filterFeeTable(q) {
+  const rows = document.getElementById('fee-tbody').querySelectorAll('tr');
+  rows.forEach(r => { r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none'; });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Helpers
+function fmt(n) {
+  const num = parseFloat(n||0);
+  if (num >= 1000000) return (num/1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num/1000).toFixed(0) + 'K';
+  return Math.round(num).toLocaleString();
+}
+function capitalize(s) { return s ? s.charAt(0).toUpperCase()+s.slice(1).replace('_',' ') : ''; }
+function relTime(ts) {
+  if (!ts) return '–';
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), d = Math.floor(diff/86400000);
+  if (m < 2) return 'Just now'; if (h < 1) return m+'m ago'; if (d < 1) return h+'h ago'; if (d < 7) return d+'d ago';
+  return new Date(ts).toLocaleDateString('en-KE',{day:'numeric',month:'short'});
+}
+function stageBadge(s) {
+  return {submitted:'bg-blue',under_review:'bg-amber',interview_scheduled:'bg-amber',approved:'bg-green',enrolled:'bg-green',rejected:'bg-red'}[s]||'bg-gray';
+}
+function stageLabel(s) { return {submitted:'Submitted',under_review:'Under Review',interview_scheduled:'Interview',approved:'Approved',enrolled:'Enrolled',rejected:'Rejected'}[s]||s; }
+function feeBadge(s) { return {paid:'bg-green',partial:'bg-amber',overdue:'bg-red',unpaid:'bg-gray',waived:'bg-gray'}[s]||'bg-gray'; }
+
+// ── SVG icon snippets (inline for topbar/statcard icons)
+function svgUsers()  { return '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'; }
+function svgCheck()  { return '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'; }
+function svgAlert()  { return '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'; }
+function svgCard()   { return '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'; }
+function svgPlus()   { return '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'; }
+function svgBell()   { return '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'; }
+
+// Demo mode fallback when Supabase is unreachable
+function loadDemoMode() {
+  document.getElementById('school-name').textContent = 'Zeki Playhouse School';
+  document.getElementById('school-plan').textContent = 'Growth Plan (offline)';
+  document.getElementById('user-name').textContent = 'Jane Mwangi';
+  document.getElementById('user-role').textContent = 'School Admin';
+  document.getElementById('user-av').textContent = 'JM';
+  document.getElementById('dash-stats').innerHTML = `
+    ${statCard('Total Students','184','Demo mode','var(--blue-light)',svgUsers(),'var(--blue)')}
+    ${statCard('New Admissions','23','This month','var(--green-light)',svgPlus(),'var(--green)')}
+    ${statCard('Fees Collected','KES 2.1M','87% of target','var(--purple-light)',svgCard(),'var(--purple)')}
+    ${statCard('Outstanding','KES 312K','31 overdue','var(--red-light)',svgAlert(),'var(--red)','var(--red)')}
+    ${statCard('Attendance','94.2%','173/184 today','var(--green-light)',svgCheck(),'var(--green)')}
+    ${statCard('Messages','3','Unread','var(--amber-light)',svgBell(),'var(--amber)')}
+  `;
+  document.getElementById('activity-feed').innerHTML = `
+    <div class="act-item"><div class="act-dot" style="background:var(--green)"></div><div><div class="act-text"><strong>Brian Kamau</strong> enrolled in Baby Class A</div><div class="act-time">Today, 9:14 AM</div></div></div>
+    <div class="act-item"><div class="act-dot" style="background:var(--purple)"></div><div><div class="act-text"><strong>KES 45,000</strong> payment received from Wanjiku Njoroge</div><div class="act-time">Today, 8:32 AM</div></div></div>
+    <div class="act-item"><div class="act-dot" style="background:var(--blue)"></div><div><div class="act-text">Fee reminder sent to <strong>14 parents</strong></div><div class="act-time">Yesterday</div></div></div>
+  `;
+}
+</script>
+</body>
+</html>
