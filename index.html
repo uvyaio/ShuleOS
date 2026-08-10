@@ -236,6 +236,67 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+  /* ── Auth Screen ── */
+  #auth-screen {
+    display: none; position: fixed; inset: 0; z-index: 9000;
+    background: linear-gradient(135deg, #0F6E56 0%, #1D9E75 50%, #2DD4A0 100%);
+    align-items: center; justify-content: center; flex-direction: column;
+  }
+  #auth-screen.visible { display: flex; }
+  .auth-card {
+    background: white; border-radius: 18px; padding: 36px 40px;
+    width: 420px; max-width: 95vw;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+  }
+  .auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .auth-logo-icon {
+    width: 44px; height: 44px; background: var(--green); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-logo-icon svg { width: 24px; height: 24px; fill: white; }
+  .auth-logo-text strong { display: block; font-size: 18px; font-weight: 800; color: #1A1A1A; }
+  .auth-logo-text span { font-size: 12px; color: var(--muted); }
+  .auth-title { font-size: 22px; font-weight: 700; color: #1A1A1A; margin-bottom: 4px; }
+  .auth-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .auth-field { margin-bottom: 14px; }
+  .auth-field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  .auth-field input {
+    width: 100%; padding: 11px 14px; border: 1.5px solid #E5E7EB;
+    border-radius: 10px; font-size: 14px; color: #1A1A1A;
+    outline: none; transition: border-color .15s; background: #F9FAFB;
+  }
+  .auth-field input:focus { border-color: var(--green); background: white; }
+  .auth-btn {
+    width: 100%; padding: 12px; background: var(--green); color: white;
+    border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 6px; transition: background .15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .auth-btn:hover { background: var(--green-dark); }
+  .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .auth-error {
+    background: var(--red-light); color: var(--red); border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; margin-bottom: 14px; display: none;
+  }
+  .auth-error.show { display: block; }
+  .auth-divider { text-align: center; font-size: 11px; color: var(--hint); margin: 16px 0; }
+  .auth-signup-link { text-align: center; font-size: 12px; color: var(--muted); margin-top: 16px; }
+  .auth-signup-link a { color: var(--green); font-weight: 600; cursor: pointer; text-decoration: none; }
+  .auth-footer { margin-top: 10px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.6); }
+  .auth-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .auth-role-card {
+    border: 1.5px solid #E5E7EB; border-radius: 10px; padding: 10px 12px;
+    cursor: pointer; transition: all .12s; text-align: left;
+  }
+  .auth-role-card:hover, .auth-role-card.sel { border-color: var(--green); background: var(--green-light); }
+  .auth-role-card .role-name { font-size: 12px; font-weight: 700; color: #1A1A1A; }
+  .auth-role-card .role-desc { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  /* Signup form hidden by default */
+  #signup-form { display: none; }
+  /* App hidden until logged in */
+  #app { display: none; }
+  #app.visible { display: flex; }
+
   /* ── Connection status ── */
   .conn-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
@@ -254,6 +315,80 @@
 </style>
 </head>
 <body>
+
+<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
+<div id="auth-screen" class="visible">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
+      </div>
+      <div class="auth-logo-text">
+        <strong>SchoolOS Africa</strong>
+        <span>School Management System</span>
+      </div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to your school dashboard</div>
+      <div class="auth-error" id="login-error"></div>
+      <div class="auth-field">
+        <label>Email Address</label>
+        <input type="email" id="login-email" placeholder="admin@zekiplayhouse.co.ke" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="auth-btn" id="login-btn" onclick="doLogin()">
+        <span id="login-btn-text">Sign In</span>
+      </button>
+      <div class="auth-signup-link">
+        No account yet? <a onclick="showSignup()">Create one</a>
+        &nbsp;·&nbsp; <a onclick="showDemo()">Try demo</a>
+      </div>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signup-form">
+      <div class="auth-title">Create account</div>
+      <div class="auth-sub">Register as a school staff member</div>
+      <div class="auth-error" id="signup-error"></div>
+      <div class="auth-field">
+        <label>Full Name</label>
+        <input type="text" id="su-name" placeholder="Jane Mwangi">
+      </div>
+      <div class="auth-field">
+        <label>Email Address</label>
+        <input type="email" id="su-email" placeholder="jane@zekiplayhouse.co.ke">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="su-password" placeholder="Min. 6 characters">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Your Role</label>
+        <div class="auth-roles" id="role-picker">
+          <div class="auth-role-card sel" data-role="school_admin" onclick="pickRole(this)">
+            <div class="role-name">School Admin</div>
+            <div class="role-desc">Full access to all modules</div>
+          </div>
+          <div class="auth-role-card" data-role="teacher" onclick="pickRole(this)">
+            <div class="role-name">Teacher</div>
+            <div class="role-desc">Attendance & class view</div>
+          </div>
+        </div>
+      </div>
+      <button class="auth-btn" id="signup-btn" onclick="doSignup()">
+        <span id="signup-btn-text">Create Account</span>
+      </button>
+      <div class="auth-signup-link">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+  </div>
+  <div class="auth-footer">Powered by Kalitec · SchoolOS Africa &copy; 2025</div>
+</div>
 
 <div id="app">
 
@@ -311,12 +446,16 @@
     <div class="sidebar-footer">
       <div class="user-row">
         <div class="avatar" id="user-av">–</div>
-        <div>
-          <div style="font-size:12px;font-weight:600;color:var(--text)" id="user-name">Loading…</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="user-name">Loading…</div>
           <div style="font-size:10px;color:var(--muted)" id="user-role">–</div>
         </div>
-        <div class="conn-dot" id="conn-dot" style="margin-left:auto;background:var(--amber)" title="Connecting…"></div>
+        <div class="conn-dot" id="conn-dot" style="background:var(--amber);flex-shrink:0" title="Connecting…"></div>
       </div>
+      <button onclick="doLogout()" style="width:100%;margin-top:10px;padding:7px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .12s" onmouseover="this.style.background='var(--red-light)';this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.background='var(--bg)';this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
     </div>
   </nav>
 
@@ -616,23 +755,237 @@ let state = {
   announcements: [], currentAttendance: {}
 };
 
-// ── On load
+// ══════════════════════════════════════════════
+//  AUTH SYSTEM
+// ══════════════════════════════════════════════
+
+let currentUser = null;
+let selectedRole = 'school_admin';
+
+// Check session on page load — if already logged in, skip the login screen
 window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('att-date-label').textContent =
     'Today · ' + new Date().toLocaleDateString('en-KE', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
 
+  // Check if user already has an active session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await enterApp();
+  }
+  // Otherwise the login screen stays visible (default)
+});
+
+// Listen for auth state changes (login / logout)
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    currentUser = session.user;
+    await enterApp();
+  } else if (event === 'SIGNED_OUT') {
+    currentUser = null;
+    showAuthScreen();
+  }
+});
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+
+  if (!email || !password) {
+    showAuthError('login-error', 'Please enter your email and password.');
+    return;
+  }
+
+  btn.disabled = true;
+  document.getElementById('login-btn-text').textContent = 'Signing in…';
+  errEl.classList.remove('show');
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    showAuthError('login-error', friendlyAuthError(error.message));
+    btn.disabled = false;
+    document.getElementById('login-btn-text').textContent = 'Sign In';
+    return;
+  }
+
+  // onAuthStateChange will handle the rest
+}
+
+async function doSignup() {
+  const name     = document.getElementById('su-name').value.trim();
+  const email    = document.getElementById('su-email').value.trim();
+  const password = document.getElementById('su-password').value;
+  const btn      = document.getElementById('signup-btn');
+
+  if (!name || !email || !password) {
+    showAuthError('signup-error', 'Please fill in all fields.');
+    return;
+  }
+  if (password.length < 6) {
+    showAuthError('signup-error', 'Password must be at least 6 characters.');
+    return;
+  }
+
+  btn.disabled = true;
+  document.getElementById('signup-btn-text').textContent = 'Creating account…';
+
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { full_name: name, role: selectedRole } }
+  });
+
+  if (error) {
+    showAuthError('signup-error', friendlyAuthError(error.message));
+    btn.disabled = false;
+    document.getElementById('signup-btn-text').textContent = 'Create Account';
+    return;
+  }
+
+  // Auto-insert profile row
+  if (data.user) {
+    await sb.from('profiles').insert({
+      id: data.user.id,
+      school_id: SCHOOL_ID,
+      full_name: name,
+      role: selectedRole
+    }).select();
+  }
+
+  showAuthError('signup-error', '');
+  btn.disabled = false;
+  document.getElementById('signup-btn-text').textContent = 'Create Account';
+
+  // If email confirmation is disabled in Supabase, user is auto logged in
+  // Otherwise show a success message
+  if (data.session) {
+    currentUser = data.user;
+    await enterApp();
+  } else {
+    showLogin();
+    showAuthError('login-error', '✓ Account created! Check your email to confirm, then sign in.');
+    document.getElementById('login-error').style.background = 'var(--green-light)';
+    document.getElementById('login-error').style.color = 'var(--green-dark)';
+    document.getElementById('login-error').classList.add('show');
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  // onAuthStateChange handles showing the login screen
+}
+
+// Demo mode — bypass auth for quick preview
+async function showDemo() {
+  currentUser = { email: 'demo@schoolos.africa', id: 'demo' };
+  await enterApp(true);
+}
+
+async function enterApp(demo = false) {
+  // Hide auth screen, show app
+  document.getElementById('auth-screen').classList.remove('visible');
+  document.getElementById('app').classList.add('visible');
+
+  // Set user info in sidebar
+  let displayName = 'Staff Member';
+  let displayRole = 'School Admin';
+
+  if (demo) {
+    displayName = 'Demo User';
+    displayRole = 'Demo Mode';
+  } else if (currentUser) {
+    // Try to get profile from DB
+    const { data: profile } = await sb.from('profiles')
+      .select('*').eq('id', currentUser.id).single();
+
+    if (profile) {
+      displayName = profile.full_name || currentUser.email;
+      displayRole = roleLabel(profile.role);
+      // Apply role-based nav restrictions
+      applyRoleAccess(profile.role);
+    } else {
+      // Fallback to auth metadata
+      displayName = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Staff';
+      displayRole = roleLabel(currentUser.user_metadata?.role || 'school_admin');
+    }
+  }
+
+  document.getElementById('user-name').textContent = displayName;
+  document.getElementById('user-role').textContent = displayRole;
+  document.getElementById('user-av').textContent = initials(displayName);
+
+  // Load all data
   try {
     await loadAll();
     document.getElementById('conn-dot').style.background = 'var(--green)';
-    document.getElementById('conn-dot').title = 'Connected to Supabase';
+    document.getElementById('conn-dot').title = 'Connected · ' + (currentUser?.email || 'demo');
   } catch(e) {
     document.getElementById('conn-dot').style.background = 'var(--red)';
-    document.getElementById('conn-dot').title = 'Connection error';
-    showToast('Could not connect to Supabase — check your internet connection');
+    showToast('Could not load data — check connection');
     loadDemoMode();
   }
-});
+}
+
+function applyRoleAccess(role) {
+  // Teachers only see attendance, students, communication
+  if (role === 'teacher') {
+    // Hide fee management and reports from nav
+    document.querySelectorAll('.nav-item').forEach(item => {
+      const sec = item.getAttribute('data-sec');
+      if (['fees','reports','parents'].includes(sec)) {
+        item.style.display = 'none';
+      }
+    });
+    showToast('Signed in as Teacher — limited access enabled');
+  }
+}
+
+function showAuthScreen() {
+  document.getElementById('auth-screen').classList.add('visible');
+  document.getElementById('app').classList.remove('visible');
+}
+
+function showLogin() {
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('signup-form').style.display = 'none';
+}
+
+function showSignup() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('signup-form').style.display = 'block';
+}
+
+function showAuthError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  if (msg) el.classList.add('show');
+  else el.classList.remove('show');
+}
+
+function pickRole(el) {
+  document.querySelectorAll('.auth-role-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedRole = el.getAttribute('data-role');
+}
+
+function friendlyAuthError(msg) {
+  if (msg.includes('Invalid login')) return 'Incorrect email or password. Please try again.';
+  if (msg.includes('Email not confirmed')) return 'Please confirm your email first, then sign in.';
+  if (msg.includes('already registered')) return 'This email is already registered. Try signing in instead.';
+  if (msg.includes('Password should')) return 'Password must be at least 6 characters.';
+  return msg;
+}
+
+function roleLabel(role) {
+  return {school_admin:'School Admin',teacher:'Teacher',parent:'Parent',super_admin:'Super Admin'}[role] || 'Staff';
+}
+
+function initials(name) {
+  return name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+}
 
 async function loadAll() {
   await Promise.all([
