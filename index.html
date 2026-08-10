@@ -530,6 +530,7 @@
         <div class="ph">
           <div><div class="ph-title">Fee Management</div><div class="ph-sub" id="fee-term-label">Term 2 · 2025</div></div>
           <div class="ph-actions">
+            <button class="btn" onclick="loadMpesaHistory()">📋 M-Pesa History</button>
             <button class="btn" onclick="loadFees()">Refresh</button>
             <button class="btn btn-primary" onclick="openPaymentModal()">+ Record Payment</button>
           </div>
@@ -704,15 +705,62 @@
 <div class="modal-overlay" id="pay-modal">
   <div class="modal">
     <div class="modal-title">Record Payment <button class="icon-btn" onclick="closeModal('pay-modal')" style="border:none">✕</button></div>
-    <div class="form-group"><label class="form-label">Student</label><select class="form-input" id="pay-student"></select></div>
-    <div class="form-group"><label class="form-label">Amount (KES)</label><input class="form-input" type="number" id="pay-amount" placeholder="25000"></div>
-    <div class="form-group"><label class="form-label">Payment Method</label><select class="form-input" id="pay-method"><option value="mpesa">M-Pesa</option><option value="bank">Bank Transfer</option><option value="cash">Cash</option></select></div>
-    <div class="form-group"><label class="form-label">Reference / M-Pesa Code</label><input class="form-input" id="pay-ref" placeholder="e.g. QAB12345CD"></div>
-    <div class="form-group"><label class="form-label">Payment Date</label><input class="form-input" type="date" id="pay-date"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn" onclick="closeModal('pay-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitPayment()">Record Payment</button>
+
+    <!-- Payment method tabs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
+      <div id="tab-mpesa" onclick="switchPayTab('mpesa')" style="border:2px solid var(--green);background:var(--green-light);border-radius:10px;padding:12px;cursor:pointer;text-align:center">
+        <div style="font-size:20px">📱</div>
+        <div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-top:4px">M-Pesa STK Push</div>
+        <div style="font-size:10px;color:var(--green)">Send prompt to parent's phone</div>
+      </div>
+      <div id="tab-manual" onclick="switchPayTab('manual')" style="border:1.5px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;text-align:center">
+        <div style="font-size:20px">✏️</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-top:4px">Manual Entry</div>
+        <div style="font-size:10px;color:var(--muted)">Cash, bank, or existing M-Pesa</div>
+      </div>
     </div>
+
+    <!-- STK Push form -->
+    <div id="pay-form-mpesa">
+      <div style="background:var(--green-light);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--green-dark);display:flex;gap:8px;align-items:flex-start">
+        <span style="font-size:16px">ℹ️</span>
+        <span>The parent will receive a pop-up on their phone to enter their M-Pesa PIN. Payment confirms automatically.</span>
+      </div>
+      <div class="form-group"><label class="form-label">Student</label><select class="form-input" id="pay-student"></select></div>
+      <div class="form-group"><label class="form-label">Amount (KES)</label><input class="form-input" type="number" id="pay-amount" placeholder="e.g. 25000"></div>
+      <div class="form-group"><label class="form-label">Parent's M-Pesa Phone Number</label><input class="form-input" id="pay-phone" placeholder="e.g. 0712 345 678"></div>
+      <!-- STK status display -->
+      <div id="stk-status" style="display:none;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;text-align:center"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn" onclick="closeModal('pay-modal')">Cancel</button>
+        <button class="btn btn-primary" id="stk-btn" onclick="initiateStkPush()" style="background:var(--green);min-width:160px">
+          <span id="stk-btn-text">📱 Send M-Pesa Prompt</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Manual entry form -->
+    <div id="pay-form-manual" style="display:none">
+      <div class="form-group"><label class="form-label">Student</label><select class="form-input" id="pay-student-manual"></select></div>
+      <div class="form-group"><label class="form-label">Amount (KES)</label><input class="form-input" type="number" id="pay-amount-manual" placeholder="25000"></div>
+      <div class="form-group"><label class="form-label">Payment Method</label>
+        <select class="form-input" id="pay-method"><option value="mpesa">M-Pesa (manual)</option><option value="bank">Bank Transfer</option><option value="cash">Cash</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Reference / M-Pesa Code</label><input class="form-input" id="pay-ref" placeholder="e.g. QAB12345CD"></div>
+      <div class="form-group"><label class="form-label">Payment Date</label><input class="form-input" type="date" id="pay-date"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn" onclick="closeModal('pay-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitPayment()">Record Payment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- M-Pesa Transaction History Modal -->
+<div class="modal-overlay" id="mpesa-history-modal">
+  <div class="modal" style="width:600px">
+    <div class="modal-title">M-Pesa Transactions <button class="icon-btn" onclick="closeModal('mpesa-history-modal')" style="border:none">✕</button></div>
+    <div id="mpesa-txn-list"><div class="loading"><div class="spinner"></div></div></div>
   </div>
 </div>
 
@@ -1210,15 +1258,21 @@ function renderFees() {
     const name = s ? `${s.first_name} ${s.last_name}` : '–';
     const cls  = s?.classes?.name || '–';
     const bal  = parseFloat(inv.total_amount||0) - parseFloat(inv.amount_paid||0);
+    const actionBtn = inv.status === 'paid'
+      ? `<button class="btn" style="padding:3px 9px;font-size:11px">Receipt</button>`
+      : `<button class="btn btn-primary" style="padding:3px 9px;font-size:11px;background:var(--green);color:#fff;border-color:var(--green)"
+           onclick="quickStkPush('${inv.id}','${inv.student_id}','${name}',${bal},'${inv.school_id}')">
+           📱 Pay
+         </button>`;
     return `<tr>
       <td><strong>${name}</strong></td>
       <td>${cls}</td>
       <td>KES ${fmt(inv.total_amount)}</td>
       <td>KES ${fmt(inv.amount_paid)}</td>
-      <td style="${bal>0?'color:var(--amber)':''}">${bal > 0 ? 'KES '+fmt(bal) : '–'}</td>
+      <td style="${bal>0?'color:var(--amber);font-weight:600':''}">${bal > 0 ? 'KES '+fmt(bal) : '–'}</td>
       <td><span class="badge ${feeBadge(inv.status)}">${capitalize(inv.status)}</span></td>
       <td>${inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-KE',{day:'numeric',month:'short'}) : '–'}</td>
-      <td><button class="btn" style="padding:3px 9px;font-size:11px">${inv.status==='paid'?'Receipt':'Remind'}</button></td>
+      <td>${actionBtn}</td>
     </tr>`;
   }).join('');
 }
@@ -1486,8 +1540,8 @@ async function advanceStage(id, current) {
 }
 
 async function submitPayment() {
-  const studentId = document.getElementById('pay-student').value;
-  const amount = parseFloat(document.getElementById('pay-amount').value);
+  const studentId = document.getElementById('pay-student-manual').value;
+  const amount = parseFloat(document.getElementById('pay-amount-manual').value);
   const ref = document.getElementById('pay-ref').value.trim();
   const method = document.getElementById('pay-method').value;
   const date = document.getElementById('pay-date').value;
@@ -1606,7 +1660,16 @@ function showCommTab(tab, el) {
 }
 
 function openAdmForm()       { document.getElementById('adm-modal').classList.add('open'); }
-function openPaymentModal()  { document.getElementById('pay-modal').classList.add('open'); }
+function openPaymentModal()  {
+  document.getElementById('pay-modal').classList.add('open');
+  // Reset STK form
+  const stkEl = document.getElementById('stk-status');
+  if (stkEl) { stkEl.style.display = 'none'; stkEl.innerHTML = ''; }
+  const btn = document.getElementById('stk-btn');
+  if (btn) { btn.disabled = false; document.getElementById('stk-btn-text').textContent = '📱 Send M-Pesa Prompt'; }
+  if (stkSession.pollTimer) clearInterval(stkSession.pollTimer);
+  switchPayTab('mpesa');
+}
 function openAnnModal()      { document.getElementById('ann-modal').classList.add('open'); }
 function closeModal(id)      { document.getElementById(id).classList.remove('open'); }
 
@@ -1623,10 +1686,12 @@ function populateClassSelects() {
 }
 
 function populatePaymentStudents() {
-  const el = document.getElementById('pay-student');
-  if (!el) return;
-  el.innerHTML = '<option value="">Select student…</option>' + state.students.map(s=>
+  const opts = '<option value="">Select student…</option>' + state.students.map(s=>
     `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+  ['pay-student','pay-student-manual'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
 }
 
 function filterAdmTable(q) {
@@ -1673,6 +1738,202 @@ function svgAlert()  { return '<circle cx="12" cy="12" r="10"/><line x1="12" y1=
 function svgCard()   { return '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'; }
 function svgPlus()   { return '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'; }
 function svgBell()   { return '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'; }
+
+// ══════════════════════════════════════════════
+//  M-PESA STK PUSH
+// ══════════════════════════════════════════════
+
+const STK_ENDPOINT = 'https://celqxkldvjdebfpszbux.supabase.co/functions/v1/mpesa-stk-push';
+
+// Current STK session state
+let stkSession = { invoiceId: null, studentId: null, schoolId: null, studentName: null, checkoutId: null, pollTimer: null };
+
+function switchPayTab(tab) {
+  const isMpesa = tab === 'mpesa';
+  document.getElementById('pay-form-mpesa').style.display  = isMpesa ? 'block' : 'none';
+  document.getElementById('pay-form-manual').style.display = isMpesa ? 'none'  : 'block';
+  document.getElementById('tab-mpesa').style.border  = isMpesa ? '2px solid var(--green)'   : '1.5px solid var(--border)';
+  document.getElementById('tab-mpesa').style.background = isMpesa ? 'var(--green-light)' : 'var(--surface)';
+  document.getElementById('tab-manual').style.border = isMpesa ? '1.5px solid var(--border)' : '2px solid var(--green)';
+  document.getElementById('tab-manual').style.background = isMpesa ? 'var(--surface)' : 'var(--green-light)';
+}
+
+// Quick STK push from the fee table row — pre-fills the modal
+function quickStkPush(invoiceId, studentId, studentName, balance, schoolId) {
+  openPaymentModal();
+  switchPayTab('mpesa');
+  // Pre-select student in dropdown
+  const sel = document.getElementById('pay-student');
+  if (sel) sel.value = studentId;
+  // Pre-fill amount with outstanding balance
+  const amtEl = document.getElementById('pay-amount');
+  if (amtEl) amtEl.value = Math.ceil(balance);
+  // Store session context
+  stkSession = { invoiceId, studentId, schoolId, studentName, checkoutId: null, pollTimer: null };
+}
+
+async function initiateStkPush() {
+  const studentId   = document.getElementById('pay-student').value;
+  const amount      = parseFloat(document.getElementById('pay-amount').value);
+  const phone       = document.getElementById('pay-phone').value.trim();
+
+  if (!studentId) { showStkStatus('error', 'Please select a student.'); return; }
+  if (!amount || amount <= 0) { showStkStatus('error', 'Please enter a valid amount.'); return; }
+  if (!phone) { showStkStatus('error', 'Please enter the parent\'s M-Pesa phone number.'); return; }
+
+  // Find invoice for selected student
+  const inv = state.invoices.find(i => i.student_id === studentId);
+  if (!inv) { showStkStatus('error', 'No invoice found for this student. Create one first.'); return; }
+
+  const student = state.students.find(s => s.id === studentId);
+  const studentName = student ? `${student.first_name} ${student.last_name}` : 'Student';
+
+  // Update button state
+  const btn = document.getElementById('stk-btn');
+  btn.disabled = true;
+  document.getElementById('stk-btn-text').textContent = 'Sending prompt…';
+  showStkStatus('loading', '⏳ Contacting Safaricom…');
+
+  try {
+    const res = await fetch(STK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone,
+        amount,
+        invoice_id:  inv.id,
+        student_id:  studentId,
+        school_id:   SCHOOL_ID,
+        student_name: studentName,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      showStkStatus('error', '❌ ' + (data.error || 'Failed to send M-Pesa prompt. Try again.'));
+      btn.disabled = false;
+      document.getElementById('stk-btn-text').textContent = '📱 Send M-Pesa Prompt';
+      return;
+    }
+
+    // Success — prompt sent to phone
+    stkSession.checkoutId  = data.checkout_request_id;
+    stkSession.invoiceId   = inv.id;
+    stkSession.studentId   = studentId;
+    stkSession.schoolId    = SCHOOL_ID;
+    stkSession.studentName = studentName;
+
+    showStkStatus('pending',
+      '📱 <strong>Prompt sent!</strong> Ask ' + studentName.split(' ')[0] + '\'s parent to check their phone and enter their M-Pesa PIN.<br>' +
+      '<span style="font-size:10px;color:var(--muted)">Checking for confirmation…</span>'
+    );
+
+    document.getElementById('stk-btn-text').textContent = 'Waiting for payment…';
+
+    // Poll every 5 seconds for up to 2 minutes
+    let polls = 0;
+    stkSession.pollTimer = setInterval(async () => {
+      polls++;
+      const confirmed = await checkPaymentStatus(data.checkout_request_id);
+      if (confirmed || polls >= 24) {
+        clearInterval(stkSession.pollTimer);
+        btn.disabled = false;
+        document.getElementById('stk-btn-text').textContent = '📱 Send M-Pesa Prompt';
+        if (!confirmed && polls >= 24) {
+          showStkStatus('error', '⏱ Payment timed out. The parent may have dismissed the prompt — try again.');
+        }
+      }
+    }, 5000);
+
+  } catch (err) {
+    showStkStatus('error', '❌ Network error: ' + err.message);
+    btn.disabled = false;
+    document.getElementById('stk-btn-text').textContent = '📱 Send M-Pesa Prompt';
+  }
+}
+
+async function checkPaymentStatus(checkoutRequestId) {
+  const { data } = await sb.from('mpesa_transactions')
+    .select('status, mpesa_receipt, amount')
+    .eq('checkout_request_id', checkoutRequestId)
+    .single();
+
+  if (!data) return false;
+
+  if (data.status === 'success') {
+    showStkStatus('success',
+      '✅ <strong>Payment confirmed!</strong> KES ' + fmt(data.amount) +
+      ' received.<br><span style="font-size:11px;color:var(--green-dark)">M-Pesa Receipt: <strong>' + data.mpesa_receipt + '</strong></span>'
+    );
+    // Reload invoices to reflect new balance
+    await loadInvoices();
+    renderFees();
+    renderDashboard();
+    showToast('✅ M-Pesa payment confirmed — KES ' + fmt(data.amount));
+    return true;
+  }
+
+  if (data.status === 'cancelled') {
+    showStkStatus('error', '❌ Payment was cancelled by the parent.');
+    return true;
+  }
+
+  if (data.status === 'failed') {
+    showStkStatus('error', '❌ Payment failed. The parent may have entered a wrong PIN or had insufficient balance.');
+    return true;
+  }
+
+  return false; // Still pending
+}
+
+function showStkStatus(type, html) {
+  const el = document.getElementById('stk-status');
+  el.style.display = 'block';
+  const styles = {
+    loading: 'background:var(--blue-light);color:var(--blue)',
+    pending: 'background:var(--amber-light);color:var(--amber)',
+    success: 'background:var(--green-light);color:var(--green-dark)',
+    error:   'background:var(--red-light);color:var(--red)',
+  };
+  el.style.cssText += ';' + styles[type];
+  el.innerHTML = html;
+}
+
+async function loadMpesaHistory() {
+  document.getElementById('mpesa-history-modal').classList.add('open');
+  const { data, error } = await sb.from('mpesa_transactions')
+    .select('*, students(first_name,last_name)')
+    .eq('school_id', SCHOOL_ID)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error || !data?.length) {
+    document.getElementById('mpesa-txn-list').innerHTML =
+      '<div class="empty"><p>No M-Pesa transactions yet.</p></div>';
+    return;
+  }
+
+  const statusStyle = { success:'bg-green', pending:'bg-amber', failed:'bg-red', cancelled:'bg-gray' };
+  document.getElementById('mpesa-txn-list').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Student</th><th>Amount</th><th>Phone</th><th>Receipt</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          ${data.map(t => `<tr>
+            <td><strong>${t.students ? t.students.first_name + ' ' + t.students.last_name : '–'}</strong></td>
+            <td>KES ${fmt(t.amount)}</td>
+            <td>${t.phone}</td>
+            <td style="font-family:monospace;font-size:11px">${t.mpesa_receipt || '–'}</td>
+            <td><span class="badge ${statusStyle[t.status]||'bg-gray'}">${capitalize(t.status)}</span></td>
+            <td>${new Date(t.created_at).toLocaleDateString('en-KE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ── end M-Pesa ──
 
 // Demo mode fallback when Supabase is unreachable
 function loadDemoMode() {
