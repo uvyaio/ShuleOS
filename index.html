@@ -308,10 +308,92 @@
   /* ── Responsive ── */
   @media (max-width: 700px) {
     .sidebar { display: none; }
-    .two-col, .four-col, .three-col, .kanban { grid-template-columns: 1fr; }
+    .two-col, .four-col, .three-col { grid-template-columns: 1fr; }
     .form-grid-2 { grid-template-columns: 1fr; }
     .msg-layout { grid-template-columns: 1fr; height: auto; }
+    .kanban > div { grid-template-columns: 1fr !important; }
+    .content { padding: 14px 12px 80px; }
+    .topbar { padding: 0 12px; }
+    .ph { flex-direction: column; gap: 10px; }
+    .ph-actions { width: 100%; flex-wrap: wrap; }
+    .ph-actions button, .ph-actions select { flex: 1; }
+    .stat-grid { grid-template-columns: repeat(2,1fr); }
   }
+
+  /* ── Mobile hamburger button (only visible on mobile) ── */
+  #mobile-menu-btn {
+    display: none;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  #mobile-menu-btn svg { width: 18px; height: 18px; color: var(--text); }
+
+  @media (max-width: 700px) {
+    #mobile-menu-btn { display: flex; }
+  }
+
+  /* ── Mobile drawer overlay ── */
+  #mobile-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 800;
+    backdrop-filter: blur(2px);
+  }
+  #mobile-overlay.open { display: block; }
+
+  /* ── Mobile drawer (slides in from left) ── */
+  #mobile-drawer {
+    position: fixed; top: 0; left: -280px; bottom: 0;
+    width: 270px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    z-index: 900; display: flex; flex-direction: column;
+    transition: left 0.25s cubic-bezier(0.4,0,0.2,1);
+    overflow-y: auto;
+  }
+  #mobile-drawer.open { left: 0; }
+
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px; border-bottom: 1px solid var(--border);
+  }
+  .drawer-close {
+    width: 32px; height: 32px; border: none; background: var(--bg);
+    border-radius: var(--radius-sm); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; color: var(--muted);
+  }
+  .drawer-close svg { width: 16px; height: 16px; }
+  .drawer-nav { flex: 1; padding: 8px 0; }
+  .drawer-nav .nav-label { font-size: 10px; font-weight: 600; color: var(--hint); text-transform: uppercase; letter-spacing:.06em; padding: 8px 16px 4px; }
+  .drawer-nav .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; font-size: 14px; color: var(--muted); border-left: 3px solid transparent; transition: all .12s; }
+  .drawer-nav .nav-item:hover, .drawer-nav .nav-item.active { background: var(--green-light); color: var(--green-dark); border-left-color: var(--green); font-weight: 600; }
+  .drawer-nav .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .drawer-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+
+  /* ── Mobile bottom navigation bar ── */
+  #bottom-nav {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    height: 60px; background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 700;
+    display: none;
+    align-items: center; justify-content: space-around;
+    padding: 0 4px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+  }
+  @media (max-width: 700px) { #bottom-nav { display: flex; } }
+  .bot-nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    cursor: pointer; flex: 1; transition: all .12s;
+    color: var(--muted); font-size: 9px; font-weight: 500;
+    border: none; background: none;
+  }
+  .bot-nav-item svg { width: 20px; height: 20px; }
+  .bot-nav-item.active { color: var(--green); }
+  .bot-nav-item.active svg { stroke: var(--green); }
 </style>
 </head>
 <body>
@@ -462,7 +544,12 @@
   <!-- ═══════════════ MAIN ═══════════════ -->
   <div class="main">
     <div class="topbar">
-      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="mobile-menu-btn" onclick="openDrawer()" title="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+      </div>
       <div class="topbar-right">
         <div class="icon-btn" title="Refresh data" onclick="loadAll()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -1731,11 +1818,15 @@ function goTo(id, el) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-' + id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (el) el.classList.add('active');
+  if (el && el.classList.contains('nav-item')) el.classList.add('active');
   const titles = {dashboard:'Dashboard',admissions:'Admissions',fees:'Fee Management',attendance:'Attendance',comms:'Communication',students:'Students',parents:'Parent Portal',reports:'Reports'};
   document.getElementById('topbar-title').textContent = titles[id] || id;
   if (id === 'comms') renderComms();
   if (id === 'attendance') renderAttRegister();
+  // Sync bottom nav
+  document.querySelectorAll('.bot-nav-item').forEach(b => b.classList.remove('active'));
+  const bn = document.getElementById('bn-' + id);
+  if (bn) bn.classList.add('active');
 }
 
 function switchTab(el, show, hide) {
@@ -1835,7 +1926,45 @@ function svgPlus()   { return '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5
 function svgBell()   { return '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'; }
 
 // ══════════════════════════════════════════════
-//  M-PESA STK PUSH
+//  MOBILE DRAWER
+// ══════════════════════════════════════════════
+
+function openDrawer() {
+  document.getElementById('mobile-drawer').classList.add('open');
+  document.getElementById('mobile-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Sync drawer user info
+  const name = document.getElementById('user-name').textContent;
+  const role = document.getElementById('user-role').textContent;
+  const av   = document.getElementById('user-av').textContent;
+  document.getElementById('drawer-name').textContent = name;
+  document.getElementById('drawer-role').textContent = role;
+  document.getElementById('drawer-av').textContent   = av;
+  document.getElementById('drawer-school-name').textContent = document.getElementById('school-name').textContent;
+  document.getElementById('drawer-school-plan').textContent = document.getElementById('school-plan').textContent;
+}
+
+function closeDrawer() {
+  document.getElementById('mobile-drawer').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function syncBottomNav(id) {
+  document.querySelectorAll('.bot-nav-item').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bn-' + id);
+  if (btn) btn.classList.add('active');
+  // Also sync drawer nav items
+  document.querySelectorAll('#mobile-drawer .nav-item').forEach(n => n.classList.remove('active'));
+}
+
+// Swipe to close drawer
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = touchStartX - e.changedTouches[0].clientX;
+  if (dx > 60 && document.getElementById('mobile-drawer').classList.contains('open')) closeDrawer();
+});
 // ══════════════════════════════════════════════
 
 const STK_ENDPOINT = 'https://celqxkldvjdebfpszbux.supabase.co/functions/v1/mpesa-stk-push';
@@ -2052,5 +2181,90 @@ function loadDemoMode() {
   `;
 }
 </script>
+<!-- ═══════════════ MOBILE DRAWER ═══════════════ -->
+<div id="mobile-overlay" onclick="closeDrawer()"></div>
+<div id="mobile-drawer">
+  <div class="drawer-header">
+    <div class="logo-wrap" style="padding:0">
+      <div class="logo-icon"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:white"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg></div>
+      <div class="logo-text"><strong style="font-size:14px">SchoolOS</strong><span style="font-size:11px;color:var(--muted)">Africa</span></div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div style="margin:10px 12px;padding:8px 10px;background:var(--green-light);border-radius:var(--radius-sm)">
+    <p style="font-size:12px;font-weight:600;color:var(--green-dark)" id="drawer-school-name">Loading…</p>
+    <span style="font-size:10px;color:var(--green)" id="drawer-school-plan">–</span>
+  </div>
+  <div class="drawer-nav">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="goTo('dashboard',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+    </div>
+    <div class="nav-label">Modules</div>
+    <div class="nav-item" onclick="goTo('admissions',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Admissions
+    </div>
+    <div class="nav-item" onclick="goTo('fees',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Fee Management
+    </div>
+    <div class="nav-item" onclick="goTo('attendance',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Attendance
+    </div>
+    <div class="nav-item" onclick="goTo('comms',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Communication
+    </div>
+    <div class="nav-label">People</div>
+    <div class="nav-item" onclick="goTo('students',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Students
+    </div>
+    <div class="nav-item" onclick="goTo('parents',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Parent Portal
+    </div>
+    <div class="nav-label">System</div>
+    <div class="nav-item" onclick="goTo('reports',this);closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Reports
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+      <div class="avatar" id="drawer-av">–</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)" id="drawer-name">–</div>
+        <div style="font-size:10px;color:var(--muted)" id="drawer-role">–</div>
+      </div>
+    </div>
+    <button onclick="doLogout()" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════ BOTTOM NAV ═══════════════ -->
+<div id="bottom-nav">
+  <button class="bot-nav-item active" id="bn-dashboard" onclick="goTo('dashboard',this);syncBottomNav('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Home
+  </button>
+  <button class="bot-nav-item" id="bn-fees" onclick="goTo('fees',this);syncBottomNav('fees')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+    Fees
+  </button>
+  <button class="bot-nav-item" id="bn-attendance" onclick="goTo('attendance',this);syncBottomNav('attendance')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Attendance
+  </button>
+  <button class="bot-nav-item" id="bn-students" onclick="goTo('students',this);syncBottomNav('students')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    Students
+  </button>
+  <button class="bot-nav-item" id="bn-menu" onclick="openDrawer()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    More
+  </button>
+</div>
+
 </body>
 </html>
