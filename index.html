@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ShuleOS</title>
+<title>SchoolOS Africa</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -324,7 +324,7 @@
         <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
       </div>
       <div class="auth-logo-text">
-        <strong>ShuleOS</strong>
+        <strong>SchoolOS Africa</strong>
         <span>School Management System</span>
       </div>
     </div>
@@ -387,7 +387,7 @@
       <div class="auth-signup-link">Already have an account? <a onclick="showLogin()">Sign in</a></div>
     </div>
   </div>
-  <div class="auth-footer">Powered by Kalitec · ShuleOS &copy; 2026</div>
+  <div class="auth-footer">Powered by Kalitec · SchoolOS Africa &copy; 2025</div>
 </div>
 
 <div id="app">
@@ -398,7 +398,7 @@
       <div class="logo-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
       </div>
-      <div class="logo-text"><strong>shuleOS</strong></div>
+      <div class="logo-text"><strong>SchoolOS</strong><span>Africa</span></div>
     </div>
     <div class="school-pill">
       <p id="school-name">Loading…</p>
@@ -1211,21 +1211,69 @@ function renderAdmissions() {
     ${statCard('Enrolled',counts.enrolled,'This term','var(--purple-light)',svgPlus(),'var(--purple)')}
   `;
 
-  const stages = ['submitted','under_review','interview_scheduled','approved'];
-  const labels = {submitted:'Submitted',under_review:'Under Review',interview_scheduled:'Interview Scheduled',approved:'Approved / Enrolled'};
-  document.getElementById('kanban-board').innerHTML = stages.map(s => `
-    <div class="k-col">
-      <div class="k-col-head">${labels[s]} <span class="badge bg-gray">${state.admissions.filter(a=>a.stage===s||(s==='approved'&&(a.stage==='approved'||a.stage==='enrolled'))).length}</span></div>
-      ${state.admissions.filter(a => s==='approved' ? (a.stage==='approved'||a.stage==='enrolled') : a.stage===s).map(a=>`
-        <div class="k-card">
-          <div class="k-card-name">${a.first_name} ${a.last_name}</div>
-          <div class="k-card-meta">
-            <span>${a.grade_applying}</span>
-            <span class="badge ${stageBadge(a.stage)}">${stageLabel(a.stage)}</span>
-            <span style="margin-left:auto;font-size:10px;color:var(--hint)">${relTime(a.created_at)}</span>
+  const stages = ['submitted','under_review','interview_scheduled','approved','enrolled'];
+  const labels = {submitted:'Submitted',under_review:'Under Review',interview_scheduled:'Interview',approved:'Approved',enrolled:'Enrolled'};
+  const colColors = {submitted:'var(--blue)',under_review:'var(--amber)',interview_scheduled:'var(--purple)',approved:'var(--green)',enrolled:'var(--green-dark)'};
+  const nextStage = {submitted:'under_review',under_review:'interview_scheduled',interview_scheduled:'approved',approved:'enrolled'};
+  const nextLabel = {submitted:'Move to Review',under_review:'Schedule Interview',interview_scheduled:'Approve',approved:'Enroll'};
+
+  document.getElementById('kanban-board').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+    ${stages.map(s => {
+      const cards = state.admissions.filter(a => a.stage === s);
+      return `
+        <div class="k-col" id="kcol-${s}"
+          ondragover="event.preventDefault();this.style.background='var(--green-light)'"
+          ondragleave="this.style.background=''"
+          ondrop="dropCard(event,'${s}');this.style.background=''">
+          <div class="k-col-head" style="border-left:3px solid ${colColors[s]};padding-left:8px;margin-bottom:10px">
+            ${labels[s]}
+            <span class="badge bg-gray">${cards.length}</span>
           </div>
-        </div>`).join('')}
-    </div>`).join('');
+          ${cards.map(a => `
+            <div class="k-card"
+              draggable="true"
+              ondragstart="dragCard(event,'${a.id}','${a.stage}')"
+              ondragend="this.style.opacity='1'"
+              style="cursor:grab">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--green-light);color:var(--green-dark);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">
+                  ${a.first_name[0]}${a.last_name[0]}
+                </div>
+                <div>
+                  <div class="k-card-name">${a.first_name} ${a.last_name}</div>
+                  <div style="font-size:10px;color:var(--muted)">${a.grade_applying}</div>
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+                👤 ${a.parent_name} · ${a.parent_phone}
+              </div>
+              <div style="font-size:10px;color:var(--hint);margin-bottom:8px">${relTime(a.created_at)}</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                ${nextStage[a.stage] ? `
+                  <button onclick="advanceStage('${a.id}','${a.stage}')"
+                    style="flex:1;padding:5px 6px;font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;border:none;background:var(--green);color:#fff;transition:all .12s"
+                    onmouseover="this.style.background='var(--green-dark)'"
+                    onmouseout="this.style.background='var(--green)'">
+                    ${nextLabel[a.stage]} →
+                  </button>` : `
+                  <span class="badge bg-green" style="flex:1;justify-content:center;padding:5px">✓ Enrolled</span>`}
+                ${a.stage !== 'enrolled' && a.stage !== 'rejected' ? `
+                  <button onclick="rejectAdmission('${a.id}')"
+                    style="padding:5px 6px;font-size:10px;font-weight:600;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--muted);transition:all .12s"
+                    onmouseover="this.style.background='var(--red-light)';this.style.color='var(--red)';this.style.borderColor='var(--red)'"
+                    onmouseout="this.style.background='var(--bg)';this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+                    ✕
+                  </button>` : ''}
+              </div>
+            </div>`).join('')}
+          ${cards.length === 0 ? `
+            <div style="border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;color:var(--hint);font-size:11px">
+              Drop here
+            </div>` : ''}
+        </div>`;
+    }).join('')}
+    </div>`;
 
   const tbody = document.getElementById('adm-tbody');
   tbody.innerHTML = state.admissions.map(a => `
@@ -1535,6 +1583,53 @@ async function advanceStage(id, current) {
   const { error } = await sb.from('admissions').update({ stage: next, updated_at: new Date().toISOString() }).eq('id', id);
   if (error) { showToast('Error: ' + error.message); return; }
   showToast('Moved to ' + stageLabel(next));
+  await loadAdmissions();
+  renderAdmissions();
+}
+
+async function rejectAdmission(id) {
+  if (!confirm('Mark this application as Rejected?')) return;
+  const { error } = await sb.from('admissions').update({ stage: 'rejected', updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('Application rejected');
+  await loadAdmissions();
+  renderAdmissions();
+}
+
+// Drag and drop support
+let draggedId = null;
+let draggedStage = null;
+
+function dragCard(event, id, stage) {
+  draggedId = id;
+  draggedStage = stage;
+  event.target.style.opacity = '0.4';
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+async function dropCard(event, targetStage) {
+  event.preventDefault();
+  if (!draggedId || draggedStage === targetStage) return;
+
+  const order = ['submitted','under_review','interview_scheduled','approved','enrolled'];
+  const fromIdx = order.indexOf(draggedStage);
+  const toIdx   = order.indexOf(targetStage);
+
+  // Only allow forward movement (or back one step)
+  if (toIdx < fromIdx - 1) {
+    showToast('You can only move applications forward in the pipeline');
+    draggedId = null; draggedStage = null;
+    return;
+  }
+
+  const { error } = await sb.from('admissions')
+    .update({ stage: targetStage, updated_at: new Date().toISOString() })
+    .eq('id', draggedId);
+
+  if (error) { showToast('Error moving card: ' + error.message); }
+  else { showToast('Moved to ' + stageLabel(targetStage)); }
+
+  draggedId = null; draggedStage = null;
   await loadAdmissions();
   renderAdmissions();
 }
